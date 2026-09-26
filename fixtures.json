@@ -1,0 +1,2258 @@
+{
+  "event": {
+    "id": "evt_01",
+    "name": "Sample Hack 2026",
+    "submissions_close": "2026-03-01T18:00:00Z"
+  },
+  "tracks": [
+    {
+      "id": "trk_01",
+      "name": "Developer tools"
+    },
+    {
+      "id": "trk_02",
+      "name": "Data and analytics"
+    },
+    {
+      "id": "trk_03",
+      "name": "Accessibility"
+    },
+    {
+      "id": "trk_04",
+      "name": "Security"
+    },
+    {
+      "id": "trk_05",
+      "name": "Climate"
+    },
+    {
+      "id": "trk_06",
+      "name": "Health"
+    },
+    {
+      "id": "trk_07",
+      "name": "Education"
+    },
+    {
+      "id": "trk_08",
+      "name": "Open hardware"
+    }
+  ],
+  "judges": [
+    {
+      "id": "jdg_01",
+      "name": "Tomas Varga",
+      "email": "tomas.varga@example.org",
+      "tracks": [
+        "trk_03"
+      ]
+    },
+    {
+      "id": "jdg_02",
+      "name": "Wei Lindqvist",
+      "email": "wei.lindqvist@example.org",
+      "tracks": [
+        "trk_02",
+        "trk_04"
+      ]
+    },
+    {
+      "id": "jdg_03",
+      "name": "Priya Nair",
+      "email": "priya.nair@example.org",
+      "tracks": [
+        "trk_04",
+        "trk_05"
+      ]
+    },
+    {
+      "id": "jdg_04",
+      "name": "Noor Haddad",
+      "email": "noor.haddad@example.org",
+      "tracks": [
+        "trk_07"
+      ]
+    },
+    {
+      "id": "jdg_05",
+      "name": "Kofi Mensah",
+      "email": "kofi.mensah@example.org",
+      "tracks": [
+        "trk_05"
+      ]
+    },
+    {
+      "id": "jdg_06",
+      "name": "Lena Kovac",
+      "email": "lena.kovac@example.org",
+      "tracks": [
+        "trk_05"
+      ]
+    },
+    {
+      "id": "jdg_07",
+      "name": "Iva Petrova",
+      "email": "iva.petrova@example.org",
+      "tracks": [
+        "trk_06"
+      ]
+    },
+    {
+      "id": "jdg_08",
+      "name": "Marek Nowak",
+      "email": "marek.nowak@example.org",
+      "tracks": [
+        "trk_04"
+      ]
+    },
+    {
+      "id": "jdg_09",
+      "name": "Sofia Duarte",
+      "email": "sofia.duarte@example.org",
+      "tracks": [
+        "trk_01"
+      ]
+    },
+    {
+      "id": "jdg_10",
+      "name": "Hiro Tanaka",
+      "email": "hiro.tanaka@example.org",
+      "tracks": [
+        "trk_04"
+      ]
+    },
+    {
+      "id": "jdg_11",
+      "name": "Amara Silva",
+      "email": "amara.silva@example.org",
+      "tracks": [
+        "trk_05",
+        "trk_07"
+      ]
+    },
+    {
+      "id": "jdg_12",
+      "name": "Dilan Yilmaz",
+      "email": "dilan.yilmaz@example.org",
+      "tracks": [
+        "trk_07",
+        "trk_03"
+      ]
+    },
+    {
+      "id": "jdg_13",
+      "name": "Rosa Moreau",
+      "email": "rosa.moreau@example.org",
+      "tracks": [
+        "trk_04"
+      ]
+    },
+    {
+      "id": "jdg_14",
+      "name": "Emeka Adeyemi",
+      "email": "emeka.adeyemi@example.org",
+      "tracks": [
+        "trk_07"
+      ]
+    },
+    {
+      "id": "jdg_15",
+      "name": "Yuki Sato",
+      "email": "yuki.sato@example.org",
+      "tracks": [
+        "trk_08"
+      ]
+    },
+    {
+      "id": "jdg_16",
+      "name": "Nadia Rahman",
+      "email": "nadia.rahman@example.org",
+      "tracks": [
+        "trk_02"
+      ]
+    },
+    {
+      "id": "jdg_17",
+      "name": "Bruno Costa",
+      "email": "bruno.costa@example.org",
+      "tracks": [
+        "trk_05"
+      ]
+    },
+    {
+      "id": "jdg_18",
+      "name": "Lars Berg",
+      "email": "lars.berg@example.org",
+      "tracks": [
+        "trk_03"
+      ]
+    },
+    {
+      "id": "jdg_19",
+      "name": "Mira Kaur",
+      "email": "mira.kaur@example.org",
+      "tracks": [
+        "trk_03"
+      ]
+    },
+    {
+      "id": "jdg_20",
+      "name": "Otto Brandt",
+      "email": "otto.brandt@example.org",
+      "tracks": [
+        "trk_08",
+        "trk_04"
+      ]
+    },
+    {
+      "id": "jdg_21",
+      "name": "Sana Aziz",
+      "email": "sana.aziz@example.org",
+      "tracks": [
+        "trk_03"
+      ]
+    },
+    {
+      "id": "jdg_22",
+      "name": "Felix Roth",
+      "email": "felix.roth@example.org",
+      "tracks": [
+        "trk_07"
+      ]
+    },
+    {
+      "id": "jdg_23",
+      "name": "Anya Sokolova",
+      "email": "anya.sokolova@example.org",
+      "tracks": [
+        "trk_06",
+        "trk_04"
+      ]
+    },
+    {
+      "id": "jdg_24",
+      "name": "Diego Herrera",
+      "email": "diego.herrera@example.org",
+      "tracks": [
+        "trk_01",
+        "trk_07"
+      ]
+    },
+    {
+      "id": "jdg_25",
+      "name": "Thandi Dlamini",
+      "email": "thandi.dlamini@example.org",
+      "tracks": [
+        "trk_02"
+      ]
+    },
+    {
+      "id": "jdg_26",
+      "name": "Jonas Vogel",
+      "email": "jonas.vogel@example.org",
+      "tracks": [
+        "trk_03",
+        "trk_01"
+      ]
+    },
+    {
+      "id": "jdg_27",
+      "name": "Leila Nasser",
+      "email": "leila.nasser@example.org",
+      "tracks": [
+        "trk_06"
+      ]
+    },
+    {
+      "id": "jdg_28",
+      "name": "Pavel Ivanov",
+      "email": "pavel.ivanov@example.org",
+      "tracks": [
+        "trk_04"
+      ]
+    },
+    {
+      "id": "jdg_29",
+      "name": "Ines Rocha",
+      "email": "ines.rocha@example.org",
+      "tracks": [
+        "trk_08",
+        "trk_06"
+      ]
+    },
+    {
+      "id": "jdg_30",
+      "name": "Rafa Okonkwo",
+      "email": "rafa.okonkwo@example.org",
+      "tracks": [
+        "trk_02"
+      ]
+    }
+  ],
+  "teams": [
+    {
+      "id": "tm_01",
+      "name": "NorthKiln",
+      "members": [
+        "priya1@example.org",
+        "member1_1@example.org",
+        "member1_2@example.org"
+      ]
+    },
+    {
+      "id": "tm_02",
+      "name": "LoudQuarry",
+      "members": [
+        "lena2@example.org",
+        "member2_1@example.org"
+      ]
+    },
+    {
+      "id": "tm_03",
+      "name": "StillTrail",
+      "members": [
+        "sofia3@example.org",
+        "member3_1@example.org"
+      ]
+    },
+    {
+      "id": "tm_04",
+      "name": "SaltDrift",
+      "members": [
+        "dilan4@example.org"
+      ]
+    },
+    {
+      "id": "tm_05",
+      "name": "AmberSwitch",
+      "members": [
+        "yuki5@example.org",
+        "member5_1@example.org",
+        "member5_2@example.org",
+        "member5_3@example.org"
+      ]
+    },
+    {
+      "id": "tm_06",
+      "name": "CopperBeacon",
+      "members": [
+        "lars6@example.org"
+      ]
+    },
+    {
+      "id": "tm_07",
+      "name": "CopperLedger",
+      "members": [
+        "sana7@example.org",
+        "member7_1@example.org",
+        "member7_2@example.org",
+        "member7_3@example.org"
+      ]
+    },
+    {
+      "id": "tm_08",
+      "name": "GreenHours",
+      "members": [
+        "diego8@example.org",
+        "member8_1@example.org",
+        "member8_2@example.org"
+      ]
+    },
+    {
+      "id": "tm_09",
+      "name": "IronLedger",
+      "members": [
+        "leila9@example.org",
+        "member9_1@example.org",
+        "member9_2@example.org"
+      ]
+    },
+    {
+      "id": "tm_10",
+      "name": "AmberOrbit",
+      "members": [
+        "rafa10@example.org",
+        "member10_1@example.org"
+      ]
+    },
+    {
+      "id": "tm_11",
+      "name": "OpenSignal",
+      "members": [
+        "farah11@example.org",
+        "member11_1@example.org"
+      ]
+    },
+    {
+      "id": "tm_12",
+      "name": "IronLoom",
+      "members": [
+        "ravi12@example.org",
+        "member12_1@example.org",
+        "member12_2@example.org",
+        "member12_3@example.org"
+      ]
+    },
+    {
+      "id": "tm_13",
+      "name": "HollowHours",
+      "members": [
+        "hana13@example.org",
+        "member13_1@example.org"
+      ]
+    },
+    {
+      "id": "tm_14",
+      "name": "StillMeadow",
+      "members": [
+        "wei14@example.org",
+        "member14_1@example.org",
+        "member14_2@example.org",
+        "member14_3@example.org"
+      ]
+    },
+    {
+      "id": "tm_15",
+      "name": "WarmQuarry",
+      "members": [
+        "kofi15@example.org"
+      ]
+    },
+    {
+      "id": "tm_16",
+      "name": "OpenSignal",
+      "members": [
+        "marek16@example.org",
+        "member16_1@example.org",
+        "member16_2@example.org",
+        "member16_3@example.org"
+      ]
+    },
+    {
+      "id": "tm_17",
+      "name": "SmallSignal",
+      "members": [
+        "amara17@example.org"
+      ]
+    },
+    {
+      "id": "tm_18",
+      "name": "CopperMeadow",
+      "members": [
+        "emeka18@example.org"
+      ]
+    },
+    {
+      "id": "tm_19",
+      "name": "PaperAnchor",
+      "members": [
+        "bruno19@example.org",
+        "member19_1@example.org"
+      ]
+    },
+    {
+      "id": "tm_20",
+      "name": "HollowHarbour",
+      "members": [
+        "otto20@example.org",
+        "member20_1@example.org",
+        "member20_2@example.org",
+        "member20_3@example.org"
+      ]
+    },
+    {
+      "id": "tm_21",
+      "name": "SaltThread",
+      "members": [
+        "anya21@example.org",
+        "member21_1@example.org",
+        "member21_2@example.org",
+        "member21_3@example.org"
+      ]
+    },
+    {
+      "id": "tm_22",
+      "name": "GreenFerry",
+      "members": [
+        "jonas22@example.org",
+        "member22_1@example.org"
+      ]
+    },
+    {
+      "id": "tm_23",
+      "name": "HollowOrbit",
+      "members": [
+        "ines23@example.org"
+      ]
+    },
+    {
+      "id": "tm_24",
+      "name": "PaperLoom",
+      "members": [
+        "milo24@example.org",
+        "member24_1@example.org"
+      ]
+    },
+    {
+      "id": "tm_25",
+      "name": "GreenDrift",
+      "members": [
+        "elsa25@example.org"
+      ]
+    },
+    {
+      "id": "tm_26",
+      "name": "SaltMeadow",
+      "members": [
+        "teo26@example.org"
+      ]
+    },
+    {
+      "id": "tm_27",
+      "name": "BrightSignal",
+      "members": [
+        "tomas27@example.org"
+      ]
+    },
+    {
+      "id": "tm_28",
+      "name": "BrightCompass",
+      "members": [
+        "noor28@example.org",
+        "member28_1@example.org",
+        "member28_2@example.org",
+        "member28_3@example.org"
+      ]
+    },
+    {
+      "id": "tm_29",
+      "name": "SmallLedger",
+      "members": [
+        "iva29@example.org",
+        "member29_1@example.org"
+      ]
+    },
+    {
+      "id": "tm_30",
+      "name": "StillTrail",
+      "members": [
+        "hiro30@example.org"
+      ]
+    },
+    {
+      "id": "tm_31",
+      "name": "GreenBeacon",
+      "members": [
+        "rosa31@example.org",
+        "member31_1@example.org"
+      ]
+    },
+    {
+      "id": "tm_32",
+      "name": "DeepMeadow",
+      "members": [
+        "nadia32@example.org",
+        "member32_1@example.org",
+        "member32_2@example.org"
+      ]
+    },
+    {
+      "id": "tm_33",
+      "name": "WarmTrail",
+      "members": [
+        "mira33@example.org"
+      ]
+    },
+    {
+      "id": "tm_34",
+      "name": "AmberSwitch",
+      "members": [
+        "felix34@example.org",
+        "member34_1@example.org",
+        "member34_2@example.org",
+        "member34_3@example.org"
+      ]
+    },
+    {
+      "id": "tm_35",
+      "name": "GlassDrift",
+      "members": [
+        "thandi35@example.org",
+        "member35_1@example.org"
+      ]
+    },
+    {
+      "id": "tm_36",
+      "name": "HollowLoom",
+      "members": [
+        "pavel36@example.org"
+      ]
+    },
+    {
+      "id": "tm_37",
+      "name": "SaltCompass",
+      "members": [
+        "zoya37@example.org",
+        "member37_1@example.org",
+        "member37_2@example.org"
+      ]
+    },
+    {
+      "id": "tm_38",
+      "name": "GreenLedger",
+      "members": [
+        "kwame38@example.org",
+        "member38_1@example.org",
+        "member38_2@example.org"
+      ]
+    },
+    {
+      "id": "tm_39",
+      "name": "SlowCompass",
+      "members": [
+        "nia39@example.org",
+        "member39_1@example.org"
+      ]
+    },
+    {
+      "id": "tm_40",
+      "name": "StillTrail",
+      "members": [
+        "ada40@example.org"
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "id": "prj_01",
+      "team": "tm_01",
+      "track": "trk_04",
+      "title": "Glass Signal",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/01",
+      "submitted_at": "2026-02-27T04:08:00Z"
+    },
+    {
+      "id": "prj_02",
+      "team": "tm_02",
+      "track": "trk_03",
+      "title": "Small Meadow",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/02",
+      "submitted_at": "2026-02-27T20:06:00Z"
+    },
+    {
+      "id": "prj_03",
+      "team": "tm_03",
+      "track": "trk_03",
+      "title": "Deep Compass",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/03",
+      "submitted_at": "2026-02-28T16:58:00Z"
+    },
+    {
+      "id": "prj_04",
+      "team": "tm_04",
+      "track": "trk_07",
+      "title": "Green Switch",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/04",
+      "submitted_at": "2026-02-27T17:00:00Z"
+    },
+    {
+      "id": "prj_05",
+      "team": "tm_05",
+      "track": "trk_02",
+      "title": "North Compass",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/05",
+      "submitted_at": "2026-02-27T04:40:00Z"
+    },
+    {
+      "id": "prj_06",
+      "team": "tm_06",
+      "track": "trk_01",
+      "title": "Dry Compass",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/06",
+      "submitted_at": "2026-03-01T10:24:00Z"
+    },
+    {
+      "id": "prj_07",
+      "team": "tm_07",
+      "track": "trk_03",
+      "title": "Dry Harbour",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/07",
+      "submitted_at": "2026-03-01T04:29:00Z"
+    },
+    {
+      "id": "prj_08",
+      "team": "tm_08",
+      "track": "trk_04",
+      "title": "North Drift",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/08",
+      "submitted_at": "2026-03-01T01:09:00Z"
+    },
+    {
+      "id": "prj_09",
+      "team": "tm_09",
+      "track": "trk_06",
+      "title": "Hollow Signal",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/09",
+      "submitted_at": "2026-03-01T15:47:00Z"
+    },
+    {
+      "id": "prj_10",
+      "team": "tm_10",
+      "track": "trk_08",
+      "title": "Still Beacon",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/10",
+      "submitted_at": "2026-03-01T05:44:00Z"
+    },
+    {
+      "id": "prj_11",
+      "team": "tm_11",
+      "track": "trk_02",
+      "title": "Salt Ledger",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/11",
+      "submitted_at": "2026-02-28T13:14:00Z"
+    },
+    {
+      "id": "prj_12",
+      "team": "tm_12",
+      "track": "trk_07",
+      "title": "Open Beacon",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/12",
+      "submitted_at": "2026-02-28T09:46:00Z"
+    },
+    {
+      "id": "prj_13",
+      "team": "tm_13",
+      "track": "trk_05",
+      "title": "Quiet Anchor",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/13",
+      "submitted_at": "2026-03-01T14:20:00Z"
+    },
+    {
+      "id": "prj_14",
+      "team": "tm_14",
+      "track": "trk_07",
+      "title": "Green Lantern",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/14",
+      "submitted_at": "2026-02-27T10:21:00Z"
+    },
+    {
+      "id": "prj_15",
+      "team": "tm_15",
+      "track": "trk_04",
+      "title": "Copper Orbit",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/15",
+      "submitted_at": "2026-03-01T08:30:00Z"
+    },
+    {
+      "id": "prj_16",
+      "team": "tm_16",
+      "track": "trk_04",
+      "title": "Salt Kiln",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/16",
+      "submitted_at": "2026-02-28T14:00:00Z"
+    },
+    {
+      "id": "prj_17",
+      "team": "tm_17",
+      "track": "trk_06",
+      "title": "Small Loom",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/17",
+      "submitted_at": "2026-03-01T09:09:00Z"
+    },
+    {
+      "id": "prj_18",
+      "team": "tm_18",
+      "track": "trk_07",
+      "title": "Open Kiln",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/18",
+      "submitted_at": "2026-03-01T15:30:00Z"
+    },
+    {
+      "id": "prj_19",
+      "team": "tm_19",
+      "track": "trk_06",
+      "title": "Small Relay",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/19",
+      "submitted_at": "2026-02-27T09:30:00Z"
+    },
+    {
+      "id": "prj_20",
+      "team": "tm_20",
+      "track": "trk_08",
+      "title": "Paper Thread",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/20",
+      "submitted_at": "2026-02-27T05:18:00Z"
+    },
+    {
+      "id": "prj_21",
+      "team": "tm_21",
+      "track": "trk_02",
+      "title": "Copper Kiln",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/21",
+      "submitted_at": "2026-02-28T01:03:00Z"
+    },
+    {
+      "id": "prj_22",
+      "team": "tm_22",
+      "track": "trk_04",
+      "title": "Dry Bridge",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/22",
+      "submitted_at": "2026-03-01T07:47:00Z"
+    },
+    {
+      "id": "prj_23",
+      "team": "tm_23",
+      "track": "trk_08",
+      "title": "Slow Quarry",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/23",
+      "submitted_at": "2026-03-01T10:30:00Z"
+    },
+    {
+      "id": "prj_24",
+      "team": "tm_24",
+      "track": "trk_03",
+      "title": "Glass Beacon",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/24",
+      "submitted_at": "2026-02-28T17:09:00Z"
+    },
+    {
+      "id": "prj_25",
+      "team": "tm_25",
+      "track": "trk_02",
+      "title": "Dry Relay",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/25",
+      "submitted_at": "2026-02-28T22:36:00Z"
+    },
+    {
+      "id": "prj_26",
+      "team": "tm_26",
+      "track": "trk_05",
+      "title": "Amber Hours",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/26",
+      "submitted_at": "2026-02-27T03:56:00Z"
+    },
+    {
+      "id": "prj_27",
+      "team": "tm_27",
+      "track": "trk_08",
+      "title": "Flat Thread",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/27",
+      "submitted_at": "2026-02-28T10:34:00Z"
+    },
+    {
+      "id": "prj_28",
+      "team": "tm_28",
+      "track": "trk_02",
+      "title": "Flat Meadow",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/28",
+      "submitted_at": "2026-03-01T10:22:00Z"
+    },
+    {
+      "id": "prj_29",
+      "team": "tm_29",
+      "track": "trk_01",
+      "title": "Flat Relay",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/29",
+      "submitted_at": "2026-02-28T20:34:00Z"
+    },
+    {
+      "id": "prj_30",
+      "team": "tm_30",
+      "track": "trk_07",
+      "title": "Paper Harbour",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/30",
+      "submitted_at": "2026-03-01T13:45:00Z"
+    },
+    {
+      "id": "prj_31",
+      "team": "tm_31",
+      "track": "trk_01",
+      "title": "Salt Ferry",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/31",
+      "submitted_at": "2026-03-01T05:43:00Z"
+    },
+    {
+      "id": "prj_32",
+      "team": "tm_32",
+      "track": "trk_01",
+      "title": "Loud Ledger",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/32",
+      "submitted_at": "2026-03-01T14:58:00Z"
+    },
+    {
+      "id": "prj_33",
+      "team": "tm_33",
+      "track": "trk_01",
+      "title": "Slow Trail",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/33",
+      "submitted_at": "2026-02-27T20:51:00Z"
+    },
+    {
+      "id": "prj_34",
+      "team": "tm_34",
+      "track": "trk_08",
+      "title": "Iron Switch",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/34",
+      "submitted_at": "2026-02-28T01:13:00Z"
+    },
+    {
+      "id": "prj_35",
+      "team": "tm_35",
+      "track": "trk_05",
+      "title": "Warm Beacon",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/35",
+      "submitted_at": "2026-02-27T09:33:00Z"
+    },
+    {
+      "id": "prj_36",
+      "team": "tm_36",
+      "track": "trk_08",
+      "title": "Salt Drift",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/36",
+      "submitted_at": "2026-02-27T01:20:00Z"
+    },
+    {
+      "id": "prj_37",
+      "team": "tm_37",
+      "track": "trk_07",
+      "title": "Salt Loom",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/37",
+      "submitted_at": "2026-02-27T21:42:00Z"
+    },
+    {
+      "id": "prj_38",
+      "team": "tm_38",
+      "track": "trk_02",
+      "title": "Deep Beacon",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/38",
+      "submitted_at": "2026-02-27T03:39:00Z"
+    },
+    {
+      "id": "prj_39",
+      "team": "tm_39",
+      "track": "trk_03",
+      "title": "Paper Anchor",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/39",
+      "submitted_at": "2026-02-26T23:30:00Z"
+    },
+    {
+      "id": "prj_40",
+      "team": "tm_40",
+      "track": "trk_01",
+      "title": "Slow Loom",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/40",
+      "submitted_at": "2026-02-28T15:26:00Z"
+    },
+    {
+      "id": "prj_41",
+      "team": "tm_07",
+      "track": "trk_03",
+      "title": "Dry Harbour",
+      "summary": "One line of what it does.",
+      "repo_url": "https://example.org/repo/07",
+      "submitted_at": "2026-03-01T17:57:00Z"
+    }
+  ],
+  "scores": [
+    {
+      "judge": "jdg_08",
+      "project": "prj_01",
+      "criteria": {
+        "functionality": 2,
+        "quality": 4,
+        "innovation": 2
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_03",
+      "project": "prj_01",
+      "criteria": {
+        "functionality": 4,
+        "quality": 5,
+        "innovation": 4
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_28",
+      "project": "prj_01",
+      "criteria": {
+        "functionality": 2,
+        "quality": 5,
+        "innovation": 3
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_21",
+      "project": "prj_02",
+      "criteria": {
+        "functionality": 4,
+        "quality": 5,
+        "innovation": 2
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_12",
+      "project": "prj_02",
+      "criteria": {
+        "functionality": 4,
+        "quality": 3,
+        "innovation": 2
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_26",
+      "project": "prj_02",
+      "criteria": {
+        "functionality": 4,
+        "quality": 5,
+        "innovation": 3
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_26",
+      "project": "prj_03",
+      "criteria": {
+        "functionality": 4,
+        "quality": 4,
+        "innovation": 3
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_19",
+      "project": "prj_03",
+      "criteria": {
+        "functionality": 3,
+        "quality": 5,
+        "innovation": 3
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_21",
+      "project": "prj_03",
+      "criteria": {
+        "functionality": 4,
+        "quality": 2,
+        "innovation": 2
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_22",
+      "project": "prj_04",
+      "criteria": {
+        "functionality": 4,
+        "quality": 5,
+        "innovation": 2
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_11",
+      "project": "prj_04",
+      "criteria": {
+        "functionality": 3,
+        "quality": 5,
+        "innovation": 5
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_04",
+      "project": "prj_04",
+      "criteria": {
+        "functionality": 3,
+        "quality": 5,
+        "innovation": 2
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_25",
+      "project": "prj_05",
+      "criteria": {
+        "functionality": 2,
+        "quality": 2,
+        "innovation": 5
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_02",
+      "project": "prj_05",
+      "criteria": {
+        "functionality": 4,
+        "quality": 3,
+        "innovation": 2
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_16",
+      "project": "prj_05",
+      "criteria": {
+        "functionality": 4,
+        "quality": 2,
+        "innovation": 2
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_24",
+      "project": "prj_06",
+      "criteria": {
+        "functionality": 2,
+        "quality": 3,
+        "innovation": 5
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_26",
+      "project": "prj_06",
+      "criteria": {
+        "functionality": 3,
+        "quality": 3,
+        "innovation": 4
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_09",
+      "project": "prj_06",
+      "criteria": {
+        "functionality": 3,
+        "quality": 3,
+        "innovation": 2
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_19",
+      "project": "prj_07",
+      "criteria": {
+        "functionality": 2,
+        "quality": 3,
+        "innovation": 2
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_21",
+      "project": "prj_07",
+      "criteria": {
+        "functionality": 4,
+        "quality": 3,
+        "innovation": 4
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_26",
+      "project": "prj_07",
+      "criteria": {
+        "functionality": 4,
+        "quality": 5,
+        "innovation": 5
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_01",
+      "project": "prj_07",
+      "criteria": {
+        "functionality": 2,
+        "quality": 2,
+        "innovation": 2
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_12",
+      "project": "prj_07",
+      "criteria": {
+        "functionality": 4,
+        "quality": 5,
+        "innovation": 3
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_10",
+      "project": "prj_08",
+      "criteria": {
+        "functionality": 3,
+        "quality": 2,
+        "innovation": 3
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_08",
+      "project": "prj_08",
+      "criteria": {
+        "functionality": 3,
+        "quality": 3,
+        "innovation": 4
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_23",
+      "project": "prj_08",
+      "criteria": {
+        "functionality": 3,
+        "quality": 2,
+        "innovation": 5
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_02",
+      "project": "prj_08",
+      "criteria": {
+        "functionality": 5,
+        "quality": 5,
+        "innovation": 5
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_13",
+      "project": "prj_08",
+      "criteria": {
+        "functionality": 5,
+        "quality": 4,
+        "innovation": 5
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_27",
+      "project": "prj_09",
+      "criteria": {
+        "functionality": 2,
+        "quality": 2,
+        "innovation": 4
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_07",
+      "project": "prj_09",
+      "criteria": {
+        "functionality": 4,
+        "quality": 4,
+        "innovation": 4
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_29",
+      "project": "prj_09",
+      "criteria": {
+        "functionality": 3,
+        "quality": 4,
+        "innovation": 5
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_15",
+      "project": "prj_10",
+      "criteria": {
+        "functionality": 4,
+        "quality": 5,
+        "innovation": 5
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_29",
+      "project": "prj_10",
+      "criteria": {
+        "functionality": 5,
+        "quality": 4,
+        "innovation": 2
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_30",
+      "project": "prj_11",
+      "criteria": {
+        "functionality": 5,
+        "quality": 4,
+        "innovation": 4
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_02",
+      "project": "prj_11",
+      "criteria": {
+        "functionality": 4,
+        "quality": 5,
+        "innovation": 5
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_25",
+      "project": "prj_11",
+      "criteria": {
+        "functionality": 5,
+        "quality": 3,
+        "innovation": 4
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_16",
+      "project": "prj_11",
+      "criteria": {
+        "functionality": 5,
+        "quality": 3,
+        "innovation": 5
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_24",
+      "project": "prj_12",
+      "criteria": {
+        "functionality": 5,
+        "quality": 3,
+        "innovation": 3
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_14",
+      "project": "prj_12",
+      "criteria": {
+        "functionality": 2,
+        "quality": 2,
+        "innovation": 3
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_22",
+      "project": "prj_12",
+      "criteria": {
+        "functionality": 5,
+        "quality": 3,
+        "innovation": 5
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_11",
+      "project": "prj_13",
+      "criteria": {
+        "functionality": 5,
+        "quality": 4,
+        "innovation": 2
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_05",
+      "project": "prj_13",
+      "criteria": {
+        "functionality": 3,
+        "quality": 2,
+        "innovation": 5
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_06",
+      "project": "prj_13",
+      "criteria": {
+        "functionality": 3,
+        "quality": 3,
+        "innovation": 3
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_24",
+      "project": "prj_14",
+      "criteria": {
+        "functionality": 4,
+        "quality": 2,
+        "innovation": 5
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_22",
+      "project": "prj_14",
+      "criteria": {
+        "functionality": 3,
+        "quality": 2,
+        "innovation": 4
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_04",
+      "project": "prj_14",
+      "criteria": {
+        "functionality": 4,
+        "quality": 5,
+        "innovation": 3
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_14",
+      "project": "prj_14",
+      "criteria": {
+        "functionality": 2,
+        "quality": 5,
+        "innovation": 2
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_11",
+      "project": "prj_14",
+      "criteria": {
+        "functionality": 5,
+        "quality": 2,
+        "innovation": 3
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_10",
+      "project": "prj_15",
+      "criteria": {
+        "functionality": 2,
+        "quality": 3,
+        "innovation": 5
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_13",
+      "project": "prj_15",
+      "criteria": {
+        "functionality": 5,
+        "quality": 4,
+        "innovation": 3
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_10",
+      "project": "prj_16",
+      "criteria": {
+        "functionality": 3,
+        "quality": 4,
+        "innovation": 4
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_08",
+      "project": "prj_16",
+      "criteria": {
+        "functionality": 4,
+        "quality": 5,
+        "innovation": 4
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_02",
+      "project": "prj_16",
+      "criteria": {
+        "functionality": 5,
+        "quality": 5,
+        "innovation": 2
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_07",
+      "project": "prj_17",
+      "criteria": {
+        "functionality": 4,
+        "quality": 4,
+        "innovation": 4
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_29",
+      "project": "prj_17",
+      "criteria": {
+        "functionality": 3,
+        "quality": 4,
+        "innovation": 3
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_27",
+      "project": "prj_17",
+      "criteria": {
+        "functionality": 3,
+        "quality": 5,
+        "innovation": 2
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_04",
+      "project": "prj_18",
+      "criteria": {
+        "functionality": 5,
+        "quality": 3,
+        "innovation": 5
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_24",
+      "project": "prj_18",
+      "criteria": {
+        "functionality": 2,
+        "quality": 3,
+        "innovation": 3
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_29",
+      "project": "prj_19",
+      "criteria": {
+        "functionality": 3,
+        "quality": 2,
+        "innovation": 5
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_07",
+      "project": "prj_19",
+      "criteria": {
+        "functionality": 4,
+        "quality": 4,
+        "innovation": 4
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_15",
+      "project": "prj_20",
+      "criteria": {
+        "functionality": 3,
+        "quality": 5,
+        "innovation": 5
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_29",
+      "project": "prj_20",
+      "criteria": {
+        "functionality": 5,
+        "quality": 2,
+        "innovation": 2
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_20",
+      "project": "prj_20",
+      "criteria": {
+        "functionality": 3,
+        "quality": 2,
+        "innovation": 2
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_25",
+      "project": "prj_21",
+      "criteria": {
+        "functionality": 3,
+        "quality": 4,
+        "innovation": 4
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_16",
+      "project": "prj_21",
+      "criteria": {
+        "functionality": 5,
+        "quality": 2,
+        "innovation": 2
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_02",
+      "project": "prj_21",
+      "criteria": {
+        "functionality": 5,
+        "quality": 5,
+        "innovation": 5
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_13",
+      "project": "prj_22",
+      "criteria": {
+        "functionality": 2,
+        "quality": 5,
+        "innovation": 3
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_20",
+      "project": "prj_22",
+      "criteria": {
+        "functionality": 2,
+        "quality": 4,
+        "innovation": 3
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_28",
+      "project": "prj_22",
+      "criteria": {
+        "functionality": 3,
+        "quality": 3,
+        "innovation": 3
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_20",
+      "project": "prj_23",
+      "criteria": {
+        "functionality": 2,
+        "quality": 2,
+        "innovation": 2
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_15",
+      "project": "prj_23",
+      "criteria": {
+        "functionality": 5,
+        "quality": 4,
+        "innovation": 2
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_29",
+      "project": "prj_23",
+      "criteria": {
+        "functionality": 2,
+        "quality": 3,
+        "innovation": 4
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_19",
+      "project": "prj_24",
+      "criteria": {
+        "functionality": 3,
+        "quality": 4,
+        "innovation": 4
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_18",
+      "project": "prj_24",
+      "criteria": {
+        "functionality": 4,
+        "quality": 2,
+        "innovation": 4
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_30",
+      "project": "prj_25",
+      "criteria": {
+        "functionality": 3,
+        "quality": 4,
+        "innovation": 5
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_25",
+      "project": "prj_25",
+      "criteria": {
+        "functionality": 4,
+        "quality": 5,
+        "innovation": 2
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_16",
+      "project": "prj_25",
+      "criteria": {
+        "functionality": 5,
+        "quality": 4,
+        "innovation": 5
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_06",
+      "project": "prj_26",
+      "criteria": {
+        "functionality": 2,
+        "quality": 5,
+        "innovation": 3
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_11",
+      "project": "prj_26",
+      "criteria": {
+        "functionality": 2,
+        "quality": 3,
+        "innovation": 3
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_17",
+      "project": "prj_26",
+      "criteria": {
+        "functionality": 3,
+        "quality": 4,
+        "innovation": 4
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_20",
+      "project": "prj_27",
+      "criteria": {
+        "functionality": 3,
+        "quality": 4,
+        "innovation": 4
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_29",
+      "project": "prj_27",
+      "criteria": {
+        "functionality": 5,
+        "quality": 3,
+        "innovation": 4
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_15",
+      "project": "prj_27",
+      "criteria": {
+        "functionality": 2,
+        "quality": 2,
+        "innovation": 4
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_02",
+      "project": "prj_28",
+      "criteria": {
+        "functionality": 3,
+        "quality": 3,
+        "innovation": 5
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_30",
+      "project": "prj_28",
+      "criteria": {
+        "functionality": 3,
+        "quality": 5,
+        "innovation": 2
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_16",
+      "project": "prj_28",
+      "criteria": {
+        "functionality": 3,
+        "quality": 3,
+        "innovation": 4
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_24",
+      "project": "prj_29",
+      "criteria": {
+        "functionality": 3,
+        "quality": 2,
+        "innovation": 3
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_09",
+      "project": "prj_29",
+      "criteria": {
+        "functionality": 4,
+        "quality": 3,
+        "innovation": 5
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_14",
+      "project": "prj_30",
+      "criteria": {
+        "functionality": 4,
+        "quality": 5,
+        "innovation": 2
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_24",
+      "project": "prj_30",
+      "criteria": {
+        "functionality": 3,
+        "quality": 2,
+        "innovation": 3
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_22",
+      "project": "prj_30",
+      "criteria": {
+        "functionality": 2,
+        "quality": 4,
+        "innovation": 3
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_26",
+      "project": "prj_31",
+      "criteria": {
+        "functionality": 5,
+        "quality": 5,
+        "innovation": 2
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_24",
+      "project": "prj_31",
+      "criteria": {
+        "functionality": 2,
+        "quality": 4,
+        "innovation": 4
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_09",
+      "project": "prj_31",
+      "criteria": {
+        "functionality": 4,
+        "quality": 3,
+        "innovation": 3
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_09",
+      "project": "prj_32",
+      "criteria": {
+        "functionality": 5,
+        "quality": 2,
+        "innovation": 3
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_26",
+      "project": "prj_32",
+      "criteria": {
+        "functionality": 2,
+        "quality": 3,
+        "innovation": 4
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_24",
+      "project": "prj_32",
+      "criteria": {
+        "functionality": 5,
+        "quality": 4,
+        "innovation": 3
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_24",
+      "project": "prj_33",
+      "criteria": {
+        "functionality": 3,
+        "quality": 5,
+        "innovation": 4
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_26",
+      "project": "prj_33",
+      "criteria": {
+        "functionality": 5,
+        "quality": 3,
+        "innovation": 4
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_09",
+      "project": "prj_33",
+      "criteria": {
+        "functionality": 5,
+        "quality": 5,
+        "innovation": 2
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_15",
+      "project": "prj_34",
+      "criteria": {
+        "functionality": 5,
+        "quality": 5,
+        "innovation": 5
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_29",
+      "project": "prj_34",
+      "criteria": {
+        "functionality": 4,
+        "quality": 3,
+        "innovation": 5
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_20",
+      "project": "prj_34",
+      "criteria": {
+        "functionality": 5,
+        "quality": 4,
+        "innovation": 3
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_11",
+      "project": "prj_35",
+      "criteria": {
+        "functionality": 2,
+        "quality": 5,
+        "innovation": 2
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_06",
+      "project": "prj_35",
+      "criteria": {
+        "functionality": 3,
+        "quality": 4,
+        "innovation": 5
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_03",
+      "project": "prj_35",
+      "criteria": {
+        "functionality": 5,
+        "quality": 2,
+        "innovation": 3
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_17",
+      "project": "prj_35",
+      "criteria": {
+        "functionality": 4,
+        "quality": 2,
+        "innovation": 4
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_05",
+      "project": "prj_35",
+      "criteria": {
+        "functionality": 5,
+        "quality": 3,
+        "innovation": 3
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_15",
+      "project": "prj_36",
+      "criteria": {
+        "functionality": 3,
+        "quality": 5,
+        "innovation": 4
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_20",
+      "project": "prj_36",
+      "criteria": {
+        "functionality": 3,
+        "quality": 4,
+        "innovation": 4
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_29",
+      "project": "prj_36",
+      "criteria": {
+        "functionality": 3,
+        "quality": 2,
+        "innovation": 5
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_11",
+      "project": "prj_37",
+      "criteria": {
+        "functionality": 5,
+        "quality": 5,
+        "innovation": 4
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_24",
+      "project": "prj_37",
+      "criteria": {
+        "functionality": 4,
+        "quality": 5,
+        "innovation": 4
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_04",
+      "project": "prj_37",
+      "criteria": {
+        "functionality": 2,
+        "quality": 2,
+        "innovation": 4
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_22",
+      "project": "prj_37",
+      "criteria": {
+        "functionality": 5,
+        "quality": 5,
+        "innovation": 4
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_30",
+      "project": "prj_38",
+      "criteria": {
+        "functionality": 5,
+        "quality": 5,
+        "innovation": 4
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_25",
+      "project": "prj_38",
+      "criteria": {
+        "functionality": 3,
+        "quality": 2,
+        "innovation": 4
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_16",
+      "project": "prj_38",
+      "criteria": {
+        "functionality": 3,
+        "quality": 5,
+        "innovation": 3
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_18",
+      "project": "prj_39",
+      "criteria": {
+        "functionality": 3,
+        "quality": 3,
+        "innovation": 5
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_26",
+      "project": "prj_39",
+      "criteria": {
+        "functionality": 2,
+        "quality": 3,
+        "innovation": 5
+      },
+      "comment": "Runs clean."
+    },
+    {
+      "judge": "jdg_26",
+      "project": "prj_40",
+      "criteria": {
+        "functionality": 5,
+        "quality": 3,
+        "innovation": 2
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_24",
+      "project": "prj_40",
+      "criteria": {
+        "functionality": 2,
+        "quality": 2,
+        "innovation": 4
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_19",
+      "project": "prj_41",
+      "criteria": {
+        "functionality": 5,
+        "quality": 4,
+        "innovation": 2
+      },
+      "comment": ""
+    },
+    {
+      "judge": "jdg_18",
+      "project": "prj_41",
+      "criteria": {
+        "functionality": 4,
+        "quality": 3,
+        "innovation": 3
+      },
+      "comment": "Docs are thin."
+    },
+    {
+      "judge": "jdg_21",
+      "project": "prj_41",
+      "criteria": {
+        "functionality": 4,
+        "quality": 5,
+        "innovation": 5
+      },
+      "comment": "Solid."
+    },
+    {
+      "judge": "jdg_26",
+      "project": "prj_41",
+      "criteria": {
+        "functionality": 4,
+        "quality": 2,
+        "innovation": 5
+      },
+      "comment": ""
+    }
+  ]
+}

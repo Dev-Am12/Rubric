@@ -1,0 +1,56 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ---- Virtual environments ----
+venv/
+.venv/
+env/
+ENV/
+
+# ---- Django ----
+*.log
+local_settings.py
+staticfiles/
+media/
+db.sqlite3
+db.sqlite3-journal
+
+# ---- Secrets / env ----
+# Real secrets never get committed. Dev-only values baked into
+# docker-compose.yml (POSTGRES_PASSWORD, DJANGO_SECRET_KEY) are
+# intentionally NOT here — they're loud and explained in README instead,
+# not hidden. This is for actual local overrides and any signing keys
+# (T4 Ed25519 records) which must never land in git.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*_private_key*
+
+# ---- Test / lint / coverage caches ----
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.tox/
+
+# ---- CI-generated, not the committed deliverable ----
+# acceptance-report.txt is REQUIRED and committed — do not add it here.
+offline-report.txt
+
+# ---- Editor / OS ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
