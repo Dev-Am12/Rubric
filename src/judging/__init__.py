@@ -1,0 +1,1 @@
+"""judging app package."""

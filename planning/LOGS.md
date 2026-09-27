@@ -99,7 +99,7 @@ Scorecard to fill as we go (the playbook's strongest write-up device):
 Candidate write-up threads (pick one at G6, now anchored on real data — RESEARCH §2B): the `jdg_07`/`prj_19` compounding edge case (a constant-score judge landing on an already-thin 2-review batch) · the `peer_scores` trap as a bug we deliberately built a test for · the `tm_07` duplicate-submission policy · statistical ties in the ranking.
 
 Entries:
-- (none yet)
+- **2026-09-27 16:38 IST · G0 (elapsed ~0h)** · Running `run.py` against local dev `runserver`: Django with `DEBUG=True` and an empty `urlpatterns` serves its default debug landing page (HTTP 200) for every route, causing `gallery is public` and `judge sees own scores` to coincidentally PASS on an unrouted skeleton instead of returning 404, while all other checks failed (overall: claimed nothing, verified nothing); in Docker/CI with `DEBUG=False`, all unrouted endpoints return 404.
 
 ---
 

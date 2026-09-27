@@ -1,0 +1,18 @@
+[portal]
+base_url = "http://localhost:8000"
+
+[auth]
+organizer = "Authorization: Bearer rubric_seed_organizer_tok_9f8e7d6c5b4a"
+judge_a = "Authorization: Bearer rubric_seed_judge_a_tok_1a2b3c4d5e6f"
+judge_b = "Authorization: Bearer rubric_seed_judge_b_tok_7a8b9c0d1e2f"
+participant = "Authorization: Bearer rubric_seed_participant_tok_3f4e5d6c7b8a"
+
+[routes]
+gallery = "/projects"
+submit = "/projects/new"
+judge_scores = "/api/judge/scores"
+peer_scores = "/api/judge/scores"
+csv_export = "/api/export.csv"
+
+[tiers]
+claimed = []

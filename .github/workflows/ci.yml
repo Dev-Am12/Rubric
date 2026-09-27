@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  clean-room:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build and run containers
+        run: docker compose up -d --build
+
+      - name: Wait for web service to be ready
+        run: |
+          timeout 60 sh -c 'until curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/projects | grep -qE "^[1-5][0-9][0-9]$"; do sleep 2; done'
+
+      - name: Run acceptance checker
+        run: python3 run.py .dogfood.toml > acceptance-report.txt
+
+      - name: Display acceptance report
+        run: cat acceptance-report.txt
+
+      - name: Upload acceptance report
+        uses: actions/upload-artifact@v4
+        with:
+          name: acceptance-report
+          path: acceptance-report.txt
