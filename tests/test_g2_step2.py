@@ -357,3 +357,145 @@ class MySubmissionsViewTest(TestCase):
         self.assertContains(response, 'Duplicate Submission Flagged')
         self.assertContains(response, 'flagged as a duplicate of')
         self.assertContains(response, 'prj_41')
+
+
+class GeneralDuplicateDetectorTest(TestCase):
+    """
+    Test 7: General duplicate-submission detector per NORMALIZATION.md D-02.
+    Tests dynamic detection during submit() without relying on the importer.
+    """
+
+    def setUp(self):
+        self.event = Event.objects.create(
+            slug='dup-detector-test',
+            name='Duplicate Detector Event',
+            submissions_close_at=timezone.now() + timedelta(days=7),
+        )
+        self.track = Track.objects.create(
+            event=self.event,
+            name='Engineering Track',
+        )
+        self.user = User.objects.create_user(
+            email='builder@example.org',
+            display_name='Builder User',
+        )
+        EventMembership.objects.create(
+            event=self.event, user=self.user,
+            role=EventRole.PARTICIPANT,
+        )
+        self.team = Team.objects.create(
+            event=self.event,
+            name='Team Gamma',
+            invite_code='gamma-code',
+            created_by=self.user,
+        )
+        TeamMembership.objects.create(team=self.team, user=self.user)
+        self.actor = Actor(user=self.user, event=self.event)
+
+    def test_synthetic_near_duplicates_detected_on_submit(self):
+        """
+        Two synthetic near-duplicate submissions from the same team submitted
+        via submissions.services.submit() are automatically detected.
+        Earlier submission flags itself against later canonical one (D-02).
+        """
+        # Create earlier draft
+        p1 = create_submission(
+            self.actor, self.team, self.track,
+            title='Project Nebula',
+            summary='Initial version of Nebula',
+        )
+        # Submit earlier project
+        submit_submission(self.actor, p1.id)
+
+        # Set submitted_at to earlier time
+        p1.refresh_from_db()
+        p1.submitted_at = timezone.now() - timedelta(hours=2)
+        p1.save(update_fields=['submitted_at'])
+
+        # Create later draft with near-identical title
+        p2 = create_submission(
+            self.actor, self.team, self.track,
+            title='Project Nebula (Final Version)',
+            summary='Polished version of Nebula',
+        )
+        # Submit later project — triggers duplicate detection
+        submit_submission(self.actor, p2.id)
+
+        p1.refresh_from_db()
+        p2.refresh_from_db()
+
+        # Earlier flags itself against later
+        self.assertEqual(p1.is_duplicate_of_id, p2.id)
+        self.assertIsNotNone(p1.duplicate_flag_reason)
+        self.assertIn('near-identical title', p1.duplicate_flag_reason)
+        self.assertIn('Earlier submission flagged against later canonical one', p1.duplicate_flag_reason)
+
+        # Later (canonical) must NOT be flagged
+        self.assertIsNone(p2.is_duplicate_of_id)
+        self.assertIsNone(p2.duplicate_flag_reason)
+
+    def test_different_projects_from_same_team_never_flagged(self):
+        """
+        Negative test: Two genuinely different projects from the same team
+        are never flagged as duplicates.
+        """
+        p1 = create_submission(
+            self.actor, self.team, self.track,
+            title='Solar Power Grid Optimizer',
+            summary='Clean energy optimization engine',
+        )
+        submit_submission(self.actor, p1.id)
+
+        p2 = create_submission(
+            self.actor, self.team, self.track,
+            title='Genomic Variant Classifier',
+            summary='Bioinformatics machine learning tool',
+        )
+        submit_submission(self.actor, p2.id)
+
+        p1.refresh_from_db()
+        p2.refresh_from_db()
+
+        # Neither should be flagged
+        self.assertIsNone(p1.is_duplicate_of_id)
+        self.assertIsNone(p1.duplicate_flag_reason)
+        self.assertIsNone(p2.is_duplicate_of_id)
+        self.assertIsNone(p2.duplicate_flag_reason)
+
+    def test_identical_titles_different_teams_never_flagged(self):
+        """
+        Projects with identical titles from DIFFERENT teams are never flagged.
+        """
+        other_user = User.objects.create_user(
+            email='other_team@example.org', display_name='Other Team User',
+        )
+        EventMembership.objects.create(
+            event=self.event, user=other_user,
+            role=EventRole.PARTICIPANT,
+        )
+        other_team = Team.objects.create(
+            event=self.event, name='Team Delta',
+            invite_code='delta-code', created_by=other_user,
+        )
+        TeamMembership.objects.create(team=other_team, user=other_user)
+        other_actor = Actor(user=other_user, event=self.event)
+
+        p1 = create_submission(
+            self.actor, self.team, self.track,
+            title='Smart Traffic Control',
+            summary='Team Gamma version',
+        )
+        submit_submission(self.actor, p1.id)
+
+        p2 = create_submission(
+            other_actor, other_team, self.track,
+            title='Smart Traffic Control',
+            summary='Team Delta version',
+        )
+        submit_submission(other_actor, p2.id)
+
+        p1.refresh_from_db()
+        p2.refresh_from_db()
+
+        self.assertIsNone(p1.is_duplicate_of_id)
+        self.assertIsNone(p2.is_duplicate_of_id)

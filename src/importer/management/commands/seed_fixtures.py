@@ -288,37 +288,16 @@ class Command(BaseCommand):
                 },
             )
 
-        # Second pass: set the duplicate flag with the CORRECT direction.
-        # SCHEMA.md §1.1 + NORMALIZATION.md D-02:
-        #   prj_07 (earlier, 04:29) flags itself against prj_41 (later, 17:57).
-        #   prj_07.is_duplicate_of = prj_41; prj_41.is_duplicate_of = null.
-        #
-        # The two projects are: same team (tm_07), same title ("Dry Harbour"),
-        # same track (trk_03), submitted ~13h apart.
-        try:
-            prj_07 = Project.objects.get(external_id='prj_07')
-            prj_41 = Project.objects.get(external_id='prj_41')
-
-            prj_07.is_duplicate_of = prj_41
-            prj_07.duplicate_flag_reason = (
-                "Same team (tm_07), same title ('Dry Harbour'), same track "
-                "(trk_03), submitted ~13h apart. Earlier submission flagged "
-                "against later canonical one per NORMALIZATION.md D-02."
-            )
-            prj_07.save()
-
-            # Ensure the later/canonical project is NOT flagged
-            prj_41.is_duplicate_of = None
-            prj_41.duplicate_flag_reason = None
-            prj_41.save()
-
+        # Second pass: detect and flag duplicate submissions per NORMALIZATION.md D-02
+        # (general duplicate detector replaces hardcoded prj_07/prj_41 assignment)
+        from submissions.services import detect_duplicates_for_event
+        flagged = detect_duplicates_for_event(event)
+        for earlier in flagged:
             logger.info(
-                "Duplicate flag set: prj_07.is_duplicate_of = prj_41 "
-                "(earlier → later, per D-02). AuditLogEntry deferred to G5."
-            )
-        except Project.DoesNotExist:
-            logger.warning(
-                "Could not set duplicate flag — prj_07 and/or prj_41 not found."
+                "Duplicate flag set: %s.is_duplicate_of = %s (per D-02). Reason: %s",
+                earlier.external_id or earlier.id,
+                earlier.is_duplicate_of.external_id or earlier.is_duplicate_of.id,
+                earlier.duplicate_flag_reason,
             )
 
         self.stdout.write(f"  Projects: {len(projects)} imported")

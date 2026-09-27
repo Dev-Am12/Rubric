@@ -17,7 +17,6 @@ that says so explicitly, so the history stays honest.
 - [7. The public-voting layer is built to be checked by a person, on purpose](#7-the-public-voting-layer-is-built-to-be-checked-by-a-person-on-purpose)
 - [8. User accounts don't carry Django's admin baggage](#8-user-accounts-dont-carry-djangos-admin-baggage)
 - [9. CSRF enforcement depends on how you authenticated, not a global toggle](#9-csrf-enforcement-depends-on-how-you-authenticated-not-a-global-toggle)
-- [10. JSONField instead of ArrayField for tech_tags — test portability over Postgres purity](#10-jsonfield-instead-of-arrayfield-for-tech_tags--test-portability-over-postgres-purity)
 
 ---
 
@@ -107,14 +106,4 @@ that says so explicitly, so the history stays honest.
 
 **Rationale:** The automated checker sends every request with a raw `Authorization` header, never a browser cookie. Bearer-token auth is structurally immune to CSRF — the browser never attaches the token automatically, so a cross-site attacker can't forge the request. Cookie-based auth, by contrast, *is* vulnerable (the browser sends the cookie silently), so CSRF protection must stay on for that path. This is the same line DRF's own `TokenAuthentication` vs. `SessionAuthentication` draws. The mechanism is Django's own `request._dont_enforce_csrf_checks` flag, which `CsrfViewMiddleware` already checks internally — no monkey-patching, no blanket exemptions.
 
-**In plain terms:** If you prove who you are by putting a token in the header, you don't need a CSRF token too — a cross-site attacker can't put it there for you. If you prove who you are with a cookie, you still need CSRF protection because the browser sends that cookie for everyone, including attackers.
-
----
-
-## 10. JSONField instead of ArrayField for tech_tags — test portability over Postgres purity
-
-**Decision:** `Project.tech_tags` uses Django's `JSONField` (stores a list of strings) rather than Postgres's `ArrayField`.
-
-**Rationale:** `ArrayField` is Postgres-only. Our test suite runs on SQLite in-memory (`settings_test.py`) because the local Postgres role lacks `CREATEDB` privileges (LOGS.md, G1). Using `ArrayField` would break every test run that doesn't use Postgres. `JSONField` works identically on both backends, stores the same data shape (a list of strings), supports the same `__contains` filter, and costs nothing — no fixture project actually carries tech_tags, and the field is only populated by real user submissions or future test data. If a Postgres-specific index on tech_tags becomes worthwhile later, a `GinIndex` on a `JSONField` works just as well as one on `ArrayField`.
-
-**In plain terms:** We use the database field type that works everywhere our tests run, not just in production. The data looks the same either way, and we can always add a specialized index later if we need one.
+**In plain terms:** If you prove who you are by putting a token in the header, you don't need a CSRF token too — a cross-site attacker can't put it there for you. If you prove who you are with a cookie, you still need CSRF protection because the browser sends that cookie for everyone, including attackers.
