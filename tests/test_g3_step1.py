@@ -4,9 +4,9 @@ from django.test import TestCase
 from django.urls import reverse
 
 from judging.models import Ballot, BallotScore, JudgeAssignment, Rubric
-from services.judging import progress, submit_ballot
+from services.judging import get_scores, progress, save_ballot, save_ballot_draft, submit_ballot
 from accounts.actors import Actor, PermissionDenied
-from accounts.models import User
+from accounts.models import EventMembership, EventRole, User
 
 
 class G3JudgingImportAndIsolationTests(TestCase):
@@ -91,3 +91,68 @@ class G3JudgingImportAndIsolationTests(TestCase):
         )
         with self.assertRaises(PermissionDenied):
             submit_ballot(judge, other_assignment.pk, {}, '')
+
+    def test_judges_without_external_ids_only_see_their_own_ballots(self):
+        event = Rubric.objects.get(event__external_id='evt_01').event
+        project = JudgeAssignment.objects.first().project
+        judges = []
+        ballots = []
+        for index in (1, 2):
+            user = User.objects.create_user(
+                email=f'null-id-judge-{index}@example.org',
+                display_name=f'Null ID Judge {index}',
+                external_id=None,
+            )
+            EventMembership.objects.create(event=event, user=user, role=EventRole.JUDGE)
+            assignment = JudgeAssignment.objects.create(
+                event=event, judge=user, project=project,
+            )
+            ballots.append(Ballot.objects.create(assignment=assignment, is_complete=True))
+            judges.append(Actor(user, event))
+
+        self.assertIsNone(judges[0].judge_external_id)
+        visible_ids = set(get_scores(judges[0]).values_list('id', flat=True))
+        self.assertIn(ballots[0].id, visible_ids)
+        self.assertNotIn(ballots[1].id, visible_ids)
+
+    def test_out_of_range_score_is_rejected_without_storing_it(self):
+        rubric = Rubric.objects.get(event__external_id='evt_01')
+        criterion = rubric.criteria.get(name='functionality')
+        criterion.max_score = 3
+        criterion.save(update_fields=['max_score'])
+        event = rubric.event
+        user = User.objects.create_user(
+            email='bounds-test-judge@example.org', display_name='Bounds Test Judge',
+        )
+        EventMembership.objects.create(event=event, user=user, role=EventRole.JUDGE)
+        assignment = JudgeAssignment.objects.create(
+            event=event, judge=user, project=JudgeAssignment.objects.first().project,
+        )
+        judge = Actor(user, event)
+
+        with self.assertRaisesRegex(ValueError, 'between 0 and 3'):
+            save_ballot(judge, assignment.pk,
+                        {'functionality': 3.01, 'quality': 4}, is_complete=True)
+
+        self.assertFalse(Ballot.objects.filter(assignment=assignment).exists())
+        self.assertFalse(BallotScore.objects.filter(ballot__assignment=assignment).exists())
+
+    def test_trailing_draft_autosave_cannot_overwrite_completed_ballot(self):
+        assignment = JudgeAssignment.objects.get(
+            judge__external_id='jdg_07', project__external_id='prj_09',
+        )
+        judge = Actor(assignment.judge, assignment.event)
+        ballot = assignment.ballot
+        original_comment = ballot.comment
+        original_submitted_at = ballot.submitted_at
+        original_scores = dict(ballot.scores.values_list('criterion__name', 'value'))
+
+        saved = save_ballot_draft(
+            judge, assignment.pk, {'functionality': 1}, comment='late autosave',
+        )
+
+        self.assertEqual(saved.pk, ballot.pk)
+        self.assertTrue(saved.is_complete)
+        self.assertEqual(saved.comment, original_comment)
+        self.assertEqual(saved.submitted_at, original_submitted_at)
+        self.assertEqual(dict(saved.scores.values_list('criterion__name', 'value')), original_scores)

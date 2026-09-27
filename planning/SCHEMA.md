@@ -168,11 +168,11 @@ services.judging.get_scores(actor, judge_external_id=None):
         return Ballot.objects.filter(assignment__event=actor.event)
     if not actor.is_judge:
         raise PermissionDenied
-    target = judge_external_id or actor.judge_external_id
-    if target != actor.judge_external_id:
+    if judge_external_id and judge_external_id != actor.judge_external_id:
         raise PermissionDenied
-    return Ballot.objects.filter(assignment__judge__external_id=target, assignment__event=actor.event)
+    return Ballot.objects.filter(assignment__judge=actor.user, assignment__event=actor.event)
 ```
+The own-score query filters by the authenticated user because non-fixture judges may have `external_id=None`; filtering by that value would collide and expose other such judges' ballots.
 401 vs. 403 is decided one layer up, not by this function: the exception handler maps `AnonymousActor` + `PermissionDenied` → 401, a resolved real `Actor` + `PermissionDenied` → 403 (AUTHZ.md §1). This one function is what both `judge_scores` and `peer_scores` route to — there is exactly one place the check can be forgotten, and it's covered by the route×role×ownership matrix (PLAN V2) plus a dedicated test named after the real check.
 
 **AssignmentRun** (full design in ASSIGNMENT.md — backlog item 4)

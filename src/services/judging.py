@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from django.db import transaction
 from django.utils import timezone
 
@@ -13,10 +15,9 @@ def get_scores(actor, judge_external_id=None):
         return Ballot.objects.filter(assignment__event=actor.event)
     if not actor.is_judge:
         raise PermissionDenied
-    target = judge_external_id or actor.judge_external_id
-    if target != actor.judge_external_id:
+    if judge_external_id and judge_external_id != actor.judge_external_id:
         raise PermissionDenied
-    return Ballot.objects.filter(assignment__judge__external_id=target, assignment__event=actor.event)
+    return Ballot.objects.filter(assignment__judge=actor.user, assignment__event=actor.event)
 
 
 def get_my_assignments(actor):
@@ -69,38 +70,52 @@ def save_ballot(actor, assignment_id, scores, comment=None, is_complete=False):
         raise PermissionDenied
 
     ballot, _ = Ballot.objects.get_or_create(assignment=assignment)
+    if not is_complete and ballot.is_complete:
+        return ballot
     if comment is not None:
         ballot.comment = comment
 
-    if is_complete:
-        ballot.is_complete = True
-        ballot.submitted_at = timezone.now()
-        ballot.save()
-        assignment.status = AssignmentStatus.COMPLETED
-        assignment.save(update_fields=['status'])
-    else:
-        ballot.save()
+    rubric = assignment.project.event.rubrics.first()
+    if scores and rubric is None:
+        raise ValueError('This event has no rubric')
+    criteria = {}
+    if rubric is not None:
+        rubric_criteria = list(rubric.criteria.all())
+        criteria = {str(c.pk): c for c in rubric_criteria}
+        criteria.update({c.name: c for c in rubric_criteria})
 
+    validated_scores = []
     if scores:
         entries = scores.items() if hasattr(scores, 'items') else (
             (item.get('criterion_id', item.get('criterion')), item.get('value'))
             for item in scores
         )
-        rubric = assignment.project.event.rubrics.first()
-        if rubric is None:
-            raise ValueError('This event has no rubric')
-        rubric_criteria = list(rubric.criteria.all())
-        criteria = {str(c.pk): c for c in rubric_criteria}
-        criteria.update({c.name: c for c in rubric_criteria})
         for criterion_key, value in entries:
             if value is None or str(value).strip() == '':
                 continue
             criterion = criteria.get(str(criterion_key))
             if criterion is None:
                 raise ValueError(f'Unknown rubric criterion: {criterion_key}')
-            BallotScore.objects.update_or_create(
-                ballot=ballot, criterion=criterion, defaults={'value': value},
-            )
+            try:
+                numeric_value = Decimal(str(value))
+            except (InvalidOperation, ValueError, TypeError):
+                raise ValueError(f'Score for {criterion.name} must be a number between 0 and {criterion.max_score}.')
+            if not numeric_value.is_finite() or numeric_value < 0 or numeric_value > criterion.max_score:
+                raise ValueError(f'Score for {criterion.name} must be between 0 and {criterion.max_score}.')
+            validated_scores.append((criterion, numeric_value))
+
+    if is_complete:
+        ballot.is_complete = True
+        ballot.submitted_at = timezone.now()
+    ballot.save()
+    if is_complete:
+        assignment.status = AssignmentStatus.COMPLETED
+        assignment.save(update_fields=['status'])
+
+    for criterion, numeric_value in validated_scores:
+        BallotScore.objects.update_or_create(
+            ballot=ballot, criterion=criterion, defaults={'value': numeric_value},
+        )
     return ballot
 
 

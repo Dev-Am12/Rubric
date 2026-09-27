@@ -60,10 +60,10 @@ Status legend: **200** = success, **403** = authenticated but forbidden, **401**
 
 | Route | anon | participant_owner | judge_a (`jdg_07`) | judge_b (`jdg_29`) | judge_unassigned | organizer |
 |---|---|---|---|---|---|---|
-| `GET /api/judge/scores` (own, no `?judge=`) | 401 | 403 | **200**, sees only `jdg_07`'s ballots | 403 | 403 | 200 (all) |
+| `GET /api/judge/scores` (own, no `?judge=`) | 401 | 403 | **200**, sees only `jdg_07`'s ballots | 403 | **200**, empty result | 200 (all) |
 | `GET /api/judge/scores?judge=jdg_07` (as `jdg_07`, i.e. self) | — | — | **200** (identity matches) | — | — | 200 |
 | **`GET /api/judge/scores?judge=jdg_07` as `judge_b`** | — | — | — | **403 — the exact spec.md check** | — | — |
-| `GET /api/judge/scores?judge=<anyone>` as `judge_unassigned` | — | — | — | — | **403**, regardless of whose id is named | — |
+| `GET /api/judge/scores?judge=<other judge id>` as `judge_unassigned` | — | — | — | — | **403**; without `?judge=`, their own list is **200** with no ballots | — |
 | `POST /judging/ballots/{assignment_id}` (submit a score) | 401 | 403 | 200, only for `jdg_07`'s own assignments | 200, only for `jdg_29`'s own | 403 (no assignment exists) | 403 (organizers don't score) |
 | `GET /organizer/progress` (live dashboard) | 401 | 403 | 403 | 403 | 403 | 200 |
 | `POST /organizer/assignments` (assign judges) | 401 | 403 | 403 | 403 | 403 | 200 |
@@ -79,11 +79,11 @@ services.judging.get_scores(actor, judge_external_id=None):
         return Ballot.objects.filter(assignment__event=actor.event)
     if not actor.is_judge:
         raise PermissionDenied
-    target = judge_external_id or actor.judge_external_id
-    if target != actor.judge_external_id:
+    if judge_external_id and judge_external_id != actor.judge_external_id:
         raise PermissionDenied
-    return Ballot.objects.filter(assignment__judge__external_id=target, assignment__event=actor.event)
+    return Ballot.objects.filter(assignment__judge=actor.user, assignment__event=actor.event)
 ```
+The own-score query filters by the authenticated user because non-fixture judges may have `external_id=None`; filtering by that value would collide and expose other such judges' ballots.
 Both `routes.judge_scores` and `routes.peer_scores` in `.dogfood.toml` point at the same URL pattern with an optional query parameter — there is exactly **one** function where the check can be forgotten, and it's covered by two dedicated tests named after the real spec.md check ("judge cannot see peer scores") plus the generic matrix below.
 
 ### 3.3 Public voting (T3 — never suite-verified, RESEARCH A14; build it for a human to check by hand)

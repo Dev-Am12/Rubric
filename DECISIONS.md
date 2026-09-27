@@ -17,6 +17,7 @@ that says so explicitly, so the history stays honest.
 - [7. The public-voting layer is built to be checked by a person, on purpose](#7-the-public-voting-layer-is-built-to-be-checked-by-a-person-on-purpose)
 - [8. User accounts don't carry Django's admin baggage](#8-user-accounts-dont-carry-djangos-admin-baggage)
 - [9. CSRF enforcement depends on how you authenticated, not a global toggle](#9-csrf-enforcement-depends-on-how-you-authenticated-not-a-global-toggle)
+- [10. Judge score isolation uses the authenticated user identity](#10-judge-score-isolation-uses-the-authenticated-user-identity)
 
 ---
 
@@ -106,4 +107,14 @@ that says so explicitly, so the history stays honest.
 
 **Rationale:** The automated checker sends every request with a raw `Authorization` header, never a browser cookie. Bearer-token auth is structurally immune to CSRF — the browser never attaches the token automatically, so a cross-site attacker can't forge the request. Cookie-based auth, by contrast, *is* vulnerable (the browser sends the cookie silently), so CSRF protection must stay on for that path. This is the same line DRF's own `TokenAuthentication` vs. `SessionAuthentication` draws. The mechanism is Django's own `request._dont_enforce_csrf_checks` flag, which `CsrfViewMiddleware` already checks internally — no monkey-patching, no blanket exemptions.
 
-**In plain terms:** If you prove who you are by putting a token in the header, you don't need a CSRF token too — a cross-site attacker can't put it there for you. If you prove who you are with a cookie, you still need CSRF protection because the browser sends that cookie for everyone, including attackers.
+**In plain terms:** If you prove who you are by putting a token in the header, you don't need a CSRF token too — a cross-site attacker can't put it there for you. If you prove who you are with a cookie, you still need CSRF protection because the browser sends that cookie for everyone, including attackers.
+
+---
+
+## 10. Judge score isolation uses the authenticated user identity
+
+**Decision:** A judge's own ballot query is scoped by the authenticated `User` foreign key. `external_id` is used only to validate an explicitly requested peer id; it is never used to identify the caller's ballots.
+
+**Rationale:** An adversarial review found that two legitimate non-fixture judges can both have `external_id=None`. Filtering the caller's scores by that nullable field returns both judges' ballots. The isolation function had already been declared authoritative and stress-tested during planning, but this remaining edge case was caught by a dedicated adversarial-review pass before shipment, not by chance or by the fixture-only acceptance checker. Database identity gives each caller an unambiguous scope, including judges with no external fixture id.
+
+**In plain terms:** A judge's own scores are selected by their account, never by an optional fixture id. A targeted review caught the null-id collision before it shipped.
