@@ -44,11 +44,38 @@ gallery:
 submit:
   declared: true
   path: /projects/new
-  method: POST
+  method: GET, POST
   auth: participant
   note: >
-    P-11 project submission (API.md §2). In G2, requires participant
+    P-11 project submission (API.md §2, UX.md §1). Requires participant
     actor for their own team while submissions are open (AUTHZ.md §3.1).
+
+project_detail:
+  declared: true
+  path: /projects/{id}
+  method: GET
+  auth: public_if_submitted_else_owner_or_organizer
+  note: >
+    Project detail (API.md §2, UX.md §1). Public if status=SUBMITTED;
+    draft submissions visible only to team members and organizers (AUTHZ.md §3.1).
+
+project_edit:
+  declared: true
+  path: /projects/{id}/edit
+  method: GET, POST
+  auth: participant_owner
+  note: >
+    Edit project submission (UX.md §1, API.md §2). Team members and organizers
+    can edit before the event deadline.
+
+my_submissions:
+  declared: true
+  path: /my/submissions
+  method: GET
+  auth: participant
+  note: >
+    Participant own submissions list (UX.md §1). Shows team's projects and
+    displays the duplicate-flag banner when is_duplicate_of is set.
 
 judge_scores:
   declared: true

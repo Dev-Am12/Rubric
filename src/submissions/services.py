@@ -43,6 +43,12 @@ def create(actor, team, track, title, summary, description='',
 
     event = team.event
 
+    # Deadline check: reject if event submissions are closed (unless organizer)
+    is_org = actor.is_organizer or actor.is_site_admin
+    if not is_org:
+        if event.submissions_close_at and timezone.now() > event.submissions_close_at:
+            raise PermissionDenied()
+
     return Project.objects.create(
         event=event,
         team=team,

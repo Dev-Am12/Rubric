@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {% if is_new %}New Project Submission{% else %}Edit {{ project.title }}{% endif %} — Rubric
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">
+    {% if is_new %}New Project Submission{% else %}Edit Submission{% endif %}
+  </h1>
+  <p class="page-subtitle">
+    {% if is_new %}
+      Submit your team's hackathon project. Submissions start in DRAFT status and can be edited until the deadline.
+    {% else %}
+      Update project materials, links, and descriptions before the deadline.
+    {% endif %}
+  </p>
+</div>
+
+<div id="form-feedback">
+  {% if closed %}
+    <div class="banner banner-closed" id="submissions-closed-banner">
+      <div class="banner-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <strong>Submissions are closed</strong>
+      </div>
+      <p id="closed-message">
+        {{ error_message|default:"The submission deadline for this event has passed. Project updates and new submissions are no longer accepted." }}
+      </p>
+    </div>
+  {% elif error_message %}
+    <div class="banner banner-error" id="form-error-banner">
+      <p>{{ error_message }}</p>
+    </div>
+  {% endif %}
+</div>
+
+<div class="form-card" id="form-container">
+  <form method="post"
+        {% if is_new %}action="/projects/new"{% else %}action="/projects/{{ project.id }}/edit"{% endif %}
+        hx-target="#form-container"
+        hx-swap="outerHTML">
+    {% csrf_token %}
+
+    {% if is_new %}
+      <!-- Team selector -->
+      <div class="form-group">
+        <label for="team-select" class="form-label">Team</label>
+        {% if teams|length > 1 %}
+          <select name="team_id" id="team-select" class="select-input" {% if closed %}disabled{% endif %}>
+            {% for t in teams %}
+              <option value="{{ t.id }}">{{ t.name }}</option>
+            {% endfor %}
+          </select>
+        {% elif teams %}
+          <input type="hidden" name="team_id" value="{{ teams.0.id }}">
+          <input type="text" class="form-input" value="{{ teams.0.name }}" disabled>
+        {% else %}
+          <p class="form-help" style="color: var(--status-error-text);">You must belong to a team before submitting.</p>
+        {% endif %}
+      </div>
+
+      <!-- Track selector -->
+      <div class="form-group">
+        <label for="track-select" class="form-label">Track *</label>
+        <select name="track_id" id="track-select" class="select-input" required {% if closed %}disabled{% endif %}>
+          {% for trk in tracks %}
+            <option value="{{ trk.id }}" {% if selected_track_id == trk.id %}selected{% endif %}>
+              {{ trk.name }}
+            </option>
+          {% endfor %}
+        </select>
+        <span class="form-help">Choose the primary track for this project.</span>
+      </div>
+    {% endif %}
+
+    <!-- Title -->
+    <div class="form-group">
+      <label for="title-input" class="form-label">Project Title *</label>
+      <input type="text"
+             name="title"
+             id="title-input"
+             class="form-input"
+             placeholder="e.g. Glass Signal"
+             value="{{ project.title|default:'' }}"
+             required
+             {% if closed %}disabled{% endif %}>
+    </div>
+
+    <!-- Summary -->
+    <div class="form-group">
+      <label for="summary-input" class="form-label">Summary *</label>
+      <input type="text"
+             name="summary"
+             id="summary-input"
+             class="form-input"
+             placeholder="One or two sentences describing what your project does"
+             value="{{ project.summary|default:'' }}"
+             required
+             {% if closed %}disabled{% endif %}>
+      <span class="form-help">Displayed in the public gallery and judge queues.</span>
+    </div>
+
+    <!-- Description -->
+    <div class="form-group">
+      <label for="description-input" class="form-label">Full Description</label>
+      <textarea name="description"
+                id="description-input"
+                class="form-textarea"
+                placeholder="Explain the problem, technical architecture, and impact..."
+                {% if closed %}disabled{% endif %}>{{ project.description|default:'' }}</textarea>
+    </div>
+
+    <!-- Repository URL -->
+    <div class="form-group">
+      <label for="repo-url-input" class="form-label">Repository URL</label>
+      <input type="url"
+             name="repo_url"
+             id="repo-url-input"
+             class="form-input"
+             placeholder="https://github.com/..."
+             value="{{ project.repo_url|default:'' }}"
+             {% if closed %}disabled{% endif %}>
+    </div>
+
+    <!-- Demo Video URL -->
+    <div class="form-group">
+      <label for="demo-url-input" class="form-label">Demo Video URL</label>
+      <input type="url"
+             name="demo_video_url"
+             id="demo-url-input"
+             class="form-input"
+             placeholder="https://youtube.com/... or Vimeo / Loom"
+             value="{{ project.demo_video_url|default:'' }}"
+             {% if closed %}disabled{% endif %}>
+    </div>
+
+    <!-- Live Deployment URL -->
+    <div class="form-group">
+      <label for="live-url-input" class="form-label">Live Deployment URL</label>
+      <input type="url"
+             name="live_url"
+             id="live-url-input"
+             class="form-input"
+             placeholder="https://myproject.example.com"
+             value="{{ project.live_url|default:'' }}"
+             {% if closed %}disabled{% endif %}>
+    </div>
+
+    <!-- Tech Tags -->
+    <div class="form-group">
+      <label for="tags-input" class="form-label">Technologies (comma-separated)</label>
+      <input type="text"
+             name="tech_tags"
+             id="tags-input"
+             class="form-input"
+             placeholder="python, django, postgresql, htmx"
+             value="{% if project.tech_tags %}{{ project.tech_tags|join:', ' }}{% endif %}"
+             {% if closed %}disabled{% endif %}>
+    </div>
+
+    <div class="form-actions">
+      {% if closed %}
+        <button type="button" class="btn btn-secondary" disabled>Submissions Closed</button>
+        {% if not is_new %}
+          <a href="/projects/{{ project.id }}" class="btn btn-secondary">View Project</a>
+        {% endif %}
+      {% else %}
+        {% if is_new %}
+          <button type="submit" class="btn btn-primary" id="btn-create">Create Draft</button>
+          <a href="/projects" class="btn btn-secondary">Cancel</a>
+        {% else %}
+          <button type="submit" name="action" value="save" class="btn btn-primary" id="btn-save">Save Changes</button>
+          {% if project.status == 'DRAFT' %}
+            <button type="submit" name="action" value="submit_final" class="btn btn-secondary" id="btn-submit-final">
+              Submit Final Project
+            </button>
+          {% endif %}
+          <a href="/projects/{{ project.id }}" class="btn btn-secondary">Cancel</a>
+        {% endif %}
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

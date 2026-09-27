@@ -70,6 +70,11 @@ class AuthMiddleware:
 
         return response
 
+    def process_exception(self, request, exception):
+        if isinstance(exception, PermissionDenied):
+            return self._permission_denied_response(request)
+        return None
+
     def _resolve_actor(self, request):
         """
         Extract token from header/cookie, look up AuthToken, build Actor.

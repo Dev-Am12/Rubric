@@ -59,7 +59,7 @@ class P11RouteResolutionTest(TestCase):
         resp = client.get(reverse('gallery'))
         self.assertEqual(resp.status_code, 200)
 
-        resp = client.post(reverse('submit'))
+        resp = client.get(reverse('submit'))
         self.assertEqual(resp.status_code, 200)
 
         resp = client.get(reverse('judge_scores'))

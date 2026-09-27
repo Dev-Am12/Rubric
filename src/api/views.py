@@ -16,20 +16,7 @@ real business logic and service calls in G2/G3.
 from django.http import JsonResponse, HttpResponse
 
 
-def gallery_view(request):
-    """P-11 gallery placeholder (/projects) — filled in at G2."""
-    return JsonResponse(
-        {"status": "placeholder", "route": "gallery"},
-        status=200,
-    )
-
-
-def submit_view(request):
-    """P-11 submit placeholder (/projects/new) — filled in at G2."""
-    return JsonResponse(
-        {"status": "placeholder", "route": "submit"},
-        status=200,
-    )
+from submissions.views import gallery_view, submit_view
 
 
 def judge_scores_view(request):

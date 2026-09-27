@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Rubric — Hackathon Judging Integrity{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/rubric.css">
+  <script src="/static/js/htmx.min.js"></script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <header class="site-header">
+    <nav class="site-nav" aria-label="Main Navigation">
+      <a href="/projects" class="brand">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+          <polyline points="2 17 12 22 22 17"></polyline>
+          <polyline points="2 12 12 17 22 12"></polyline>
+        </svg>
+        <span>Rubric</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="/projects" id="nav-gallery">Gallery</a></li>
+        <li><a href="/my/submissions" id="nav-my-submissions">My Submissions</a></li>
+        <li><a href="/projects/new" id="nav-submit" class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;">Submit Project</a></li>
+      </ul>
+
+      <div class="actor-info">
+        {% if request.actor and not request.actor.is_anonymous %}
+          <span class="actor-badge" id="actor-indicator">
+            {% if request.actor.user.display_name %}
+              {{ request.actor.user.display_name }}
+            {% else %}
+              {{ request.actor.user.email }}
+            {% endif %}
+            {% if request.actor.is_organizer %}
+              (Organizer)
+            {% elif request.actor.is_judge %}
+              (Judge)
+            {% else %}
+              (Participant)
+            {% endif %}
+          </span>
+        {% else %}
+          <span class="actor-badge" id="actor-indicator">Anonymous</span>
+        {% endif %}
+      </div>
+    </nav>
+  </header>
+
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

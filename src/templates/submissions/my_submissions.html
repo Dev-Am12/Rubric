@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}My Submissions — Rubric{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-md);">
+  <div>
+    <h1 class="page-title">My Submissions</h1>
+    <p class="page-subtitle">
+      Projects submitted by your team{% if teams|length > 1 %}s{% endif %}
+      ({% for team in teams %}<strong>{{ team.name }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}).
+    </p>
+  </div>
+  <a href="/projects/new" class="btn btn-primary" id="btn-new-submission">
+    + New Submission
+  </a>
+</div>
+
+{% if projects %}
+  <div style="display: flex; flex-direction: column; gap: var(--space-lg);" id="submissions-list">
+    {% for project in projects %}
+      <article class="project-card" id="submission-card-{{ project.id }}" style="padding: var(--space-xl);">
+        {% if project.is_duplicate_of %}
+          <div class="banner banner-warning" id="duplicate-banner-{{ project.id }}" style="margin-bottom: var(--space-md);">
+            <div class="banner-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              <strong>Duplicate Submission Flagged</strong>
+            </div>
+            <p>
+              This earlier submission has been flagged as a duplicate of
+              <a href="/projects/{{ project.is_duplicate_of.id }}" id="duplicate-link-{{ project.id }}">
+                <strong>{{ project.is_duplicate_of.title }}</strong>
+                {% if project.is_duplicate_of.external_id %}({{ project.is_duplicate_of.external_id }}){% endif %}
+              </a>.
+            </p>
+            {% if project.duplicate_flag_reason %}
+              <p class="duplicate-reason" id="duplicate-reason-{{ project.id }}">
+                <strong>Reason:</strong> {{ project.duplicate_flag_reason }}
+              </p>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        <div class="card-top">
+          <div>
+            <h2 class="card-title" style="font-size: 1.25rem;">
+              <a href="/projects/{{ project.id }}" id="sub-title-{{ project.id }}">{{ project.title }}</a>
+              {% if project.external_id %}
+                <span style="font-size: 0.875rem; color: var(--text-muted); font-weight: 400;">({{ project.external_id }})</span>
+              {% endif %}
+            </h2>
+            <div class="card-team" style="margin-top: var(--space-2xs);">
+              Track: <strong>{{ project.track.name }}</strong> &middot; Team: <strong>{{ project.team.name }}</strong>
+            </div>
+          </div>
+          <div>
+            {% if project.status == 'SUBMITTED' %}
+              <span class="badge badge-submitted" id="sub-status-{{ project.id }}">Submitted</span>
+            {% else %}
+              <span class="badge badge-draft" id="sub-status-{{ project.id }}">Draft</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <p class="card-summary" style="margin: var(--space-sm) 0;">
+          {{ project.summary }}
+        </p>
+
+        {% if project.tech_tags %}
+          <div class="card-tags" style="margin-bottom: var(--space-sm);">
+            {% for tag in project.tech_tags %}
+              <span class="tag-pill">{{ tag }}</span>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="card-footer" style="padding-top: var(--space-md);">
+          <span>
+            {% if project.submitted_at %}
+              Submitted {{ project.submitted_at|date:"M d, Y H:i" }}
+            {% else %}
+              Created {{ project.created_at|date:"M d, Y H:i" }}
+            {% endif %}
+          </span>
+          <div style="display: flex; gap: var(--space-sm);">
+            <a href="/projects/{{ project.id }}" class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.8125rem;">
+              View Details
+            </a>
+            <a href="/projects/{{ project.id }}/edit" class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.8125rem;" id="sub-edit-{{ project.id }}">
+              Edit
+            </a>
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state" id="empty-submissions">
+    <h3>No Submissions Yet</h3>
+    <p style="margin-bottom: var(--space-md);">Your team hasn't created any project submissions for this event yet.</p>
+    <a href="/projects/new" class="btn btn-primary">Start a Submission &rarr;</a>
+  </div>
+{% endif %}
+{% endblock %}

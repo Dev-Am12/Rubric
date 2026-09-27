@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Project Gallery — Rubric{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Project Gallery</h1>
+  <p class="page-subtitle">Submitted hackathon projects ready for community review and judging.</p>
+</div>
+
+<!-- Search and Filter Bar -->
+<form method="get" action="/projects" class="filter-bar"
+      hx-get="/projects"
+      hx-target="#projects-container"
+      hx-select="#projects-container"
+      hx-trigger="submit, change from:#track-select"
+      hx-push-url="true">
+  <input type="text"
+         name="q"
+         id="search-input"
+         class="search-input"
+         placeholder="Search projects by title..."
+         value="{{ q|default:'' }}">
+
+  <select name="track" id="track-select" class="select-input">
+    <option value="">All Tracks</option>
+    {% for track in tracks %}
+      <option value="{{ track.external_id|default:track.name }}" {% if selected_track == track.external_id or selected_track == track.name %}selected{% endif %}>
+        {{ track.name }}
+      </option>
+    {% endfor %}
+  </select>
+
+  <button type="submit" class="btn btn-secondary" id="search-submit">Filter</button>
+  {% if q or selected_track %}
+    <a href="/projects" class="btn btn-secondary" id="search-clear">Clear</a>
+  {% endif %}
+</form>
+
+<div id="projects-container">
+  <p class="projects-count" id="projects-count">
+    Showing {{ projects|length }} submitted project{{ projects|length|pluralize }}.
+  </p>
+
+  {% if projects %}
+    <div class="project-grid" id="project-grid">
+      {% for project in projects %}
+        <article class="project-card" id="project-card-{{ project.id }}">
+          <div class="card-top">
+            <h2 class="card-title">
+              <a href="/projects/{{ project.id }}" id="project-title-{{ project.id }}">{{ project.title }}</a>
+            </h2>
+            <span class="badge badge-track">{{ project.track.name }}</span>
+          </div>
+
+          <div class="card-team" id="project-team-{{ project.id }}">
+            Team: <strong>{{ project.team.name }}</strong>
+          </div>
+
+          <p class="card-summary" id="project-summary-{{ project.id }}">
+            {{ project.summary }}
+          </p>
+
+          {% if project.tech_tags %}
+            <div class="card-tags">
+              {% for tag in project.tech_tags %}
+                <span class="tag-pill">{{ tag }}</span>
+              {% endfor %}
+            </div>
+          {% endif %}
+
+          <div class="card-footer">
+            <span>Submitted {{ project.submitted_at|date:"M d, Y"|default:"Recently" }}</span>
+            <a href="/projects/{{ project.id }}" class="card-link">View details &rarr;</a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state" id="empty-state">
+      <h3>No projects found</h3>
+      <p>No submitted projects match the current search and filter criteria.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
