@@ -1,6 +1,6 @@
 # DogFood 2026 — Docker & CI (backlog item 8)
 
-**Rev 2 · 2026-09-25 · Status: design only, no code yet — §6 fully rewritten (F4): no local machine can run Docker at all**
+**Rev 3 · 2026-09-26 · Status: design only, no code yet — native Postgres confirmed available (Windows, pgAdmin 4), §7's open question closed**
 This is the single highest-stakes piece of the whole submission: spec.md's own words, "if it does not come up on a laptop with the network off, we cannot adopt it, and adoption is the entire point." Everything here exists to make that literally true on a judge's unknown machine, not just on ours.
 
 ---

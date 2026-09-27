@@ -1,6 +1,6 @@
 # DogFood 2026 — Master Plan
 
-**Rev 14 · 2026-09-26 · Status: STRESS-TESTED, kickoff postponed to Sun 2026-09-27 23:30 IST (RESEARCH §2) — no heavy work until building starts (DL-041)**
+**Rev 14 · 2026-09-26 · Status: STRESS-TESTED, kickoff is on Sun 2026-09-26 23:30 IST (RESEARCH §2) — no heavy work until building starts (DL-041)**
 Companion docs: `RESEARCH.md` (facts, spec audit, domain notes) · `LOGS.md` (decisions, sessions, blockers, findings journal) · `STRESS-TEST.md` (full audit findings + fixes, 2026-09-25) · SCHEMA/AUTHZ/NORMALIZATION/ASSIGNMENT/VOTING/API/UX/DOCKER/DOCS-PLAN/PROMPTS/SCHEDULE.md (backlog items 1–11).
 
 ---
