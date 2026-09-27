@@ -36,6 +36,7 @@ from accounts.models import (
 from events.models import Event, Track
 from submissions.models import Project, ProjectStatus
 from teams.models import Team, TeamMembership
+from judging.models import Rubric, RubricCriterion, JudgeAssignment, AssignmentStatus, Ballot, BallotScore
 
 logger = logging.getLogger('importer.seed_fixtures')
 
@@ -96,6 +97,8 @@ class Command(BaseCommand):
             self._import_judges(data, event, track_map)
             team_map = self._import_teams(data, event)
             self._import_projects(data, event, track_map, team_map)
+            rubric = self._import_rubric(event)
+            self._import_scores(data, event, rubric)
             self._import_persona_tokens(data, event)
 
         self._print_seed_tokens()
@@ -153,6 +156,44 @@ class Command(BaseCommand):
             track_map[t['id']] = track
         self.stdout.write(f"  Tracks: {len(track_map)} imported")
         return track_map
+
+    def _import_rubric(self, event):
+        rubric, _ = Rubric.objects.update_or_create(
+            event=event, name='Default Rubric', defaults={},
+        )
+        for order, name in enumerate(('functionality', 'quality', 'innovation')):
+            RubricCriterion.objects.update_or_create(
+                rubric=rubric, name=name,
+                defaults={'weight': 1, 'max_score': 5, 'order': order},
+            )
+        return rubric
+
+    def _import_scores(self, data, event, rubric):
+        """Import fixture scores; submitted_at records import provenance only."""
+        imported_at = timezone.now()
+        users = {u.external_id: u for u in User.objects.filter(external_id__isnull=False)}
+        projects = {p.external_id: p for p in Project.objects.filter(event=event)}
+        criteria = {c.name: c for c in RubricCriterion.objects.filter(rubric=rubric)}
+        scores = data.get('scores', [])
+        for row in scores:
+            judge = users[row['judge']]
+            project = projects[row['project']]
+            assignment, _ = JudgeAssignment.objects.update_or_create(
+                judge=judge, project=project,
+                defaults={'event': event, 'status': AssignmentStatus.COMPLETED},
+            )
+            ballot, _ = Ballot.objects.update_or_create(
+                assignment=assignment,
+                defaults={'comment': row.get('comment') or '', 'is_complete': True,
+                          'submitted_at': imported_at},
+            )
+            for name, value in row.get('criteria', {}).items():
+                criterion = criteria[name]
+                BallotScore.objects.update_or_create(
+                    ballot=ballot, criterion=criterion,
+                    defaults={'value': value},
+                )
+        self.stdout.write(f"  Scores: {len(scores)} imported")
 
     # ------------------------------------------------------------------
     # Organizer (dedicated seed account)

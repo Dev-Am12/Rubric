@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Judge Assignment Queue — Rubric{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 960px; margin: 0 auto; padding: var(--space-xl) var(--space-md);">
+  
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-xl); flex-wrap: wrap; gap: var(--space-md);">
+    <div>
+      <h1 style="font-size: 1.75rem; font-weight: 700; margin-bottom: var(--space-xs);">Judge Assignment Queue</h1>
+      <p style="color: var(--text-secondary); margin: 0; font-size: 0.9375rem;">
+        Your assigned projects for this event. Progress is autosaved as you score.
+      </p>
+    </div>
+    {% if first_pending %}
+      <a href="{% url 'judge_ballot' assignment_id=first_pending.id %}" class="btn btn-primary" id="continue-judging-btn">
+        Continue Judging &rarr;
+      </a>
+    {% endif %}
+  </div>
+
+  <!-- Progress Bar Card -->
+  <div class="card" style="margin-bottom: var(--space-xl); padding: var(--space-lg); background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
+      <span style="font-weight: 600; font-size: 0.9375rem;">Judging Progress</span>
+      <span style="font-size: 0.875rem; color: var(--text-secondary);" id="queue-progress-count">
+        <strong>{{ completed_count }}</strong> of <strong>{{ total_count }}</strong> completed ({{ percent_complete }}%)
+      </span>
+    </div>
+    <div style="width: 100%; height: 8px; background: var(--bg-subtle); border-radius: 4px; overflow: hidden;">
+      <div style="width: {{ percent_complete }}%; height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.3s ease;"></div>
+    </div>
+  </div>
+
+  <!-- Pending Assignments -->
+  <section style="margin-bottom: var(--space-2xl);">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-md); border-bottom: 1px solid var(--border-subtle); padding-bottom: var(--space-xs);">
+      <h2 style="font-size: 1.25rem; font-weight: 600; margin: 0;">Pending Assignments ({{ pending_count }})</h2>
+    </div>
+
+    {% if pending_assignments %}
+      <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+        {% for assignment in pending_assignments %}
+          <div class="card" style="padding: var(--space-lg); background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); display: flex; justify-content: space-between; align-items: center; gap: var(--space-md); flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 260px;">
+              <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-xs);">
+                {% if assignment.project.track %}
+                  <span class="badge" style="background: var(--bg-subtle); color: var(--text-secondary); font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                    {{ assignment.project.track.name }}
+                  </span>
+                {% endif %}
+                {% if assignment.ballot and assignment.ballot.scores.exists %}
+                  <span class="badge" style="background: var(--status-warn-bg); color: var(--status-warn-text); font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-sm); border: 1px solid var(--status-warn-border);">
+                    Draft in progress
+                  </span>
+                {% else %}
+                  <span class="badge" style="background: var(--bg-subtle); color: var(--text-muted); font-size: 0.75rem; padding: 2px 8px; border-radius: var(--radius-sm);">
+                    Not started
+                  </span>
+                {% endif %}
+              </div>
+              <h3 style="font-size: 1.125rem; font-weight: 600; margin: 0 0 var(--space-xs) 0;">
+                <a href="{% url 'judge_ballot' assignment_id=assignment.id %}" style="color: var(--text-primary); text-decoration: none;">
+                  {{ assignment.project.title }}
+                </a>
+                {% if assignment.project.external_id %}
+                  <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; font-family: var(--font-mono);">({{ assignment.project.external_id }})</span>
+                {% endif %}
+              </h3>
+              {% if assignment.project.summary %}
+                <p style="color: var(--text-secondary); font-size: 0.875rem; margin: 0 0 var(--space-xs) 0; line-height: 1.4;">
+                  {{ assignment.project.summary }}
+                </p>
+              {% endif %}
+              <div style="font-size: 0.8125rem; color: var(--text-muted);">
+                Team: <strong>{{ assignment.project.team.name }}</strong>
+              </div>
+            </div>
+
+            <div>
+              <a href="{% url 'judge_ballot' assignment_id=assignment.id %}" class="btn btn-primary" id="score-btn-{{ assignment.id }}" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                {% if assignment.ballot and assignment.ballot.scores.exists %}Continue Draft &rarr;{% else %}Score Project &rarr;{% endif %}
+              </a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="padding: var(--space-xl); text-align: center; background: var(--bg-surface); border: 1px dashed var(--border-subtle); border-radius: var(--radius-lg); color: var(--text-secondary);">
+        <p style="margin: 0; font-size: 0.9375rem;">No pending assignments. You have reviewed all assigned projects!</p>
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- Completed Assignments -->
+  <section>
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-md); border-bottom: 1px solid var(--border-subtle); padding-bottom: var(--space-xs);">
+      <h2 style="font-size: 1.25rem; font-weight: 600; margin: 0;">Completed Assignments ({{ completed_count }})</h2>
+    </div>
+
+    {% if completed_assignments %}
+      <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+        {% for assignment in completed_assignments %}
+          <div class="card" style="padding: var(--space-md) var(--space-lg); background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); display: flex; justify-content: space-between; align-items: center; gap: var(--space-md); flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 260px;">
+              <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-2xs);">
+                {% if assignment.project.track %}
+                  <span class="badge" style="background: var(--bg-subtle); color: var(--text-secondary); font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                    {{ assignment.project.track.name }}
+                  </span>
+                {% endif %}
+                <span class="badge" style="background: var(--status-submitted-bg); color: var(--status-submitted-text); font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-sm); border: 1px solid var(--status-submitted-border);">
+                  Submitted
+                </span>
+              </div>
+              <h3 style="font-size: 1rem; font-weight: 600; margin: 0 0 var(--space-2xs) 0;">
+                <a href="{% url 'judge_ballot' assignment_id=assignment.id %}" style="color: var(--text-primary); text-decoration: none;">
+                  {{ assignment.project.title }}
+                </a>
+                {% if assignment.project.external_id %}
+                  <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; font-family: var(--font-mono);">({{ assignment.project.external_id }})</span>
+                {% endif %}
+              </h3>
+
+              <div style="font-size: 0.8125rem; color: var(--text-muted);">
+                Team: {{ assignment.project.team.name }}
+                {% if assignment.ballot and assignment.ballot.submitted_at %}
+                  &middot; Submitted {{ assignment.ballot.submitted_at|date:"M j, H:i" }}
+                {% endif %}
+              </div>
+            </div>
+
+            <div>
+              <a href="{% url 'judge_ballot' assignment_id=assignment.id %}" class="btn btn-secondary" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">
+                Review Ballot
+              </a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="padding: var(--space-lg); text-align: center; background: var(--bg-surface); border: 1px dashed var(--border-subtle); border-radius: var(--radius-lg); color: var(--text-muted);">
+        <p style="margin: 0; font-size: 0.875rem;">No completed reviews yet.</p>
+      </div>
+    {% endif %}
+  </section>
+
+</div>
+{% endblock %}

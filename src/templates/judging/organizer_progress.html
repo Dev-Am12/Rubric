@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Judging Progress — Organizer Dashboard — Rubric{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 800px; margin: 0 auto; padding: var(--space-xl) var(--space-md);">
+  
+  <div style="margin-bottom: var(--space-xl);">
+    <div style="display: flex; align-items: center; gap: var(--space-xs); margin-bottom: var(--space-xs);">
+      <span class="badge" style="background: var(--accent-subtle); color: var(--accent); font-weight: 600; font-size: 0.75rem; padding: 2px 8px; border-radius: var(--radius-sm); border: 1px solid var(--accent-border);">
+        Organizer View
+      </span>
+    </div>
+    <h1 style="font-size: 1.75rem; font-weight: 700; margin: 0 0 var(--space-xs) 0;">Event Judging Progress</h1>
+    <p style="color: var(--text-secondary); margin: 0; font-size: 0.9375rem;">
+      Live evaluation coverage across all event submissions.
+    </p>
+  </div>
+
+  <!-- Raw Numbers Summary Card -->
+  <div class="card" style="padding: var(--space-xl); background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); margin-bottom: var(--space-xl); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-xl); text-align: center;">
+      <div style="padding: var(--space-md); background: var(--bg-subtle); border-radius: var(--radius-md);">
+        <div style="font-size: 2.25rem; font-weight: 700; color: var(--text-primary); line-height: 1;" id="stat-completed-projects">
+          {{ completed_projects }}
+        </div>
+        <div style="font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-top: var(--space-xs);">
+          Completed Projects
+        </div>
+      </div>
+
+      <div style="padding: var(--space-md); background: var(--bg-subtle); border-radius: var(--radius-md);">
+        <div style="font-size: 2.25rem; font-weight: 700; color: var(--text-primary); line-height: 1;" id="stat-total-projects">
+          {{ total_projects }}
+        </div>
+        <div style="font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-top: var(--space-xs);">
+          Total Projects
+        </div>
+      </div>
+
+      <div style="padding: var(--space-md); background: var(--bg-subtle); border-radius: var(--radius-md);">
+        <div style="font-size: 2.25rem; font-weight: 700; color: var(--accent); line-height: 1;" id="stat-progress-pct">
+          {{ percent_complete }}%
+        </div>
+        <div style="font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-top: var(--space-xs);">
+          Coverage Rate
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-xs); font-size: 0.875rem;">
+        <span style="font-weight: 600;">Overall Review Progress</span>
+        <span style="color: var(--text-secondary);">{{ completed_projects }} of {{ total_projects }} projects reviewed</span>
+      </div>
+      <div style="width: 100%; height: 10px; background: var(--bg-subtle); border-radius: 5px; overflow: hidden;">
+        <div style="width: {{ percent_complete }}%; height: 100%; background: var(--accent); border-radius: 5px; transition: width 0.3s ease;"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="padding: var(--space-md) var(--space-lg); background: var(--bg-surface); border: 1px dashed var(--border-subtle); border-radius: var(--radius-md); font-size: 0.8125rem; color: var(--text-muted); line-height: 1.5;">
+    <strong>G3 Status:</strong> Raw progress counters active. Full graph health connectivity (Fiedler value &lambda;<sub>2</sub>, connected components), per-judge variance anomaly detection, and duplicate resolution controls arrive in G4.
+  </div>
+
+</div>
+{% endblock %}

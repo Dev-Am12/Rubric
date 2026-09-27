@@ -11,7 +11,7 @@ participant = "Authorization: Bearer rubric_seed_participant_tok_3f4e5d6c7b8a"
 gallery = "/projects"
 submit = "/projects/new"
 judge_scores = "/api/judge/scores"
-peer_scores = "/api/judge/scores"
+peer_scores = "/api/judge/scores?judge=jdg_07"
 csv_export = "/api/export.csv"
 
 [tiers]

@@ -31,7 +31,6 @@ class P11RouteResolutionTest(TestCase):
       - gallery      -> /projects
       - submit       -> /projects/new
       - judge_scores -> /api/judge/scores
-      - peer_scores  -> /api/judge/scores
       - csv_export   -> /api/export.csv
 
     This prevents any future refactor from silently renaming these routes.
@@ -46,14 +45,11 @@ class P11RouteResolutionTest(TestCase):
     def test_judge_scores_route_resolves(self):
         self.assertEqual(reverse('judge_scores'), '/api/judge/scores')
 
-    def test_peer_scores_route_resolves(self):
-        self.assertEqual(reverse('peer_scores'), '/api/judge/scores')
-
     def test_csv_export_route_resolves(self):
         self.assertEqual(reverse('csv_export'), '/api/export.csv')
 
-    def test_p11_placeholder_views_return_200(self):
-        """All five P-11 placeholder endpoints respond with 200 OK."""
+    def test_p11_routes_are_reachable(self):
+        """Public routes respond; protected routes reject anonymous callers."""
         client = Client()
 
         resp = client.get(reverse('gallery'))
@@ -63,11 +59,11 @@ class P11RouteResolutionTest(TestCase):
         self.assertEqual(resp.status_code, 200)
 
         resp = client.get(reverse('judge_scores'))
-        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.status_code, 401)
 
-        # peer_scores is the same path, with optional ?judge= query param
-        resp = client.get(reverse('peer_scores') + '?judge=jdg_07')
-        self.assertEqual(resp.status_code, 200)
+        # Peer score access is the same URL with an optional ?judge= parameter.
+        resp = client.get(reverse('judge_scores') + '?judge=jdg_07')
+        self.assertEqual(resp.status_code, 401)
 
         resp = client.get(reverse('csv_export'))
         self.assertEqual(resp.status_code, 200)

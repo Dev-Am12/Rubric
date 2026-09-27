@@ -88,7 +88,7 @@ judge_scores:
 
 peer_scores:
   declared: true
-  path: /api/judge/scores
+  path: /api/judge/scores?judge=jdg_07
   method: GET
   auth: organizer_only_if_different_judge
   note: >
@@ -104,3 +104,53 @@ csv_export:
   note: >
     P-11 CSV export of final rankings and scores (API.md §2). In G4,
     organizer-only export endpoint (AUTHZ.md §3.2).
+
+ballot_submit:
+  declared: true
+  path: /api/v1/ballots/{assignment_id}
+  method: POST
+  auth: assigned_judge
+  note: Judge may submit only their own assignment (AUTHZ.md §3.2).
+
+organizer_progress:
+  declared: true
+  path: /api/v1/organizer/progress
+  method: GET
+  auth: organizer
+  note: Minimal completed-project count for the G3 progress service.
+
+judge_queue:
+  declared: true
+  path: /judge/queue
+  method: GET
+  auth: judge
+  note: >
+    Judge assignment queue (UX.md §1, AUTHZ.md §3.2). Shows assigned projects
+    for the requesting judge only.
+
+judge_ballot:
+  declared: true
+  path: /judge/ballots/{assignment_id}
+  method: GET, POST
+  auth: assigned_judge
+  note: >
+    Two-pane ballot scoring screen (UX.md §2, AUTHZ.md §3.2). Accessible only to
+    the judge assigned to this assignment.
+
+judge_ballot_autosave:
+  declared: true
+  path: /judge/ballots/{assignment_id}/autosave
+  method: POST
+  auth: assigned_judge
+  note: >
+    HTMX autosave for in-progress scoring (UX.md §2). Accessible only to the
+    judge assigned to this assignment.
+
+organizer_progress_page:
+  declared: true
+  path: /organizer/progress
+  method: GET
+  auth: organizer
+  note: >
+    Organizer progress dashboard UI (UX.md §1, §3). Shows project review
+    completion numbers.
