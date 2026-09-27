@@ -62,7 +62,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Rubric auth: resolves raw tokens into request.actor (AUTHZ.md §1)
+    'accounts.middleware.AuthMiddleware',
 ]
+
 
 ROOT_URLCONF = 'rubric.urls'
 

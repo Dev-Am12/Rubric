@@ -1,0 +1,79 @@
+# Authorization expectations — the machine-readable twin of AUTHZ.md §3.
+# This file is loaded by the route×role coverage test (AUTHZ.md §4).
+#
+# Every route discovered via URLconf introspection MUST have an entry here,
+# or the build fails.  This is what makes "I added a route at 3am without
+# thinking about authz" a build error, not a security hole.
+#
+# Format:
+#   route_name:
+#     declared: true/false
+#     note: optional explanation
+#
+# Routes with declared=false MUST be removed before submission freeze
+# (PLAN.md §5.6).  Their only purpose is to prove the coverage test
+# itself can catch undeclared routes (AUTHZ.md §4, control case).
+
+# -----------------------------------------------------------------------
+# Control case: the deliberately-leaky test-only route (AUTHZ.md §4).
+# This route has NO policy check.  It exists purely so the authz coverage
+# test can prove it catches an undeclared route.  REMOVE BEFORE FREEZE.
+# -----------------------------------------------------------------------
+debug_leaky_scores:
+  declared: true
+  note: >
+    INTENTIONALLY UNDECLARED IN AUTHZ.md §3 — this is the control case.
+    It has no policy check at all.  The coverage test should catch it as
+    "present in URLconf but with no real authorization."
+    TODO: Remove this route and this entry before submission (PLAN §5.6).
+
+# -----------------------------------------------------------------------
+# P-11 routes (API.md §1, .dogfood.toml, AUTHZ.md §3)
+# Exact paths registered from day one. In G1 Step 2, these point to 200
+# placeholder views. Full authorization and business logic wired at G2/G3/G4.
+# -----------------------------------------------------------------------
+gallery:
+  declared: true
+  path: /projects
+  method: GET
+  auth: public
+  note: >
+    P-11 public project gallery (API.md §2). In G2, shows submitted
+    projects only (AUTHZ.md §3.1, D-13). Public read.
+
+submit:
+  declared: true
+  path: /projects/new
+  method: POST
+  auth: participant
+  note: >
+    P-11 project submission (API.md §2). In G2, requires participant
+    actor for their own team while submissions are open (AUTHZ.md §3.1).
+
+judge_scores:
+  declared: true
+  path: /api/judge/scores
+  method: GET
+  auth: judge_or_organizer
+  note: >
+    P-11 judge own scores (API.md §2). In G3, returns ballots for the
+    requesting judge, or all ballots if organizer (AUTHZ.md §3.2, F1).
+
+peer_scores:
+  declared: true
+  path: /api/judge/scores
+  method: GET
+  auth: organizer_only_if_different_judge
+  note: >
+    P-11 peer scores isolation probe (API.md §2, with ?judge= param).
+    In G3, judges cannot see another judge's scores (403); only
+    organizers can inspect peer scores (AUTHZ.md §3.2, spec.md trap).
+
+csv_export:
+  declared: true
+  path: /api/export.csv
+  method: GET
+  auth: organizer
+  note: >
+    P-11 CSV export of final rankings and scores (API.md §2). In G4,
+    organizer-only export endpoint (AUTHZ.md §3.2).

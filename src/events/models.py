@@ -39,3 +39,20 @@ class Track(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.event.slug})"
+
+
+class Prize(models.Model):
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.CASCADE,
+        related_name='prizes',
+    )
+    rank_label = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+
+    class Meta:
+        db_table = 'events_prize'
+
+    def __str__(self):
+        return f"{self.rank_label} ({self.event.slug})"
+
