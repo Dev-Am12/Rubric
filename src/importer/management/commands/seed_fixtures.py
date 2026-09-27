@@ -1,14 +1,43 @@
+"""
+Full fixture importer — idempotent by external_id throughout.
+
+Imports:
+  1. Event + Tracks (existing from G0)
+  2. All 30 judges → User + EventMembership(JUDGE) + JudgeTrackEligibility
+  3. All 40 teams → Team + TeamMembership
+  4. All 41 projects → Project (with corrected is_duplicate_of direction)
+  5. Four persona AuthTokens (organizer, judge_a, judge_b, participant)
+
+Design reference:
+  - SCHEMA.md §2 (fixture→schema mapping)
+  - SCHEMA.md §1.1 (is_duplicate_of: prj_07 → prj_41, the EARLIER flags
+    itself against the LATER canonical one; NORMALIZATION.md D-02)
+
+Note: scores[] import is deferred to G3 (requires Rubric/Ballot/BallotScore
+models from judging app). AuditLogEntry is G5 scope; duplicate flagging is
+logged via Python's logging module for now.
+"""
+
 import json
+import logging
 import os
 from pathlib import Path
+
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.db import transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.utils.text import slugify
 
-from accounts.models import AuthToken, EventMembership, EventRole, User
+from accounts.models import (
+    AuthToken, EventMembership, EventRole, JudgeTrackEligibility, User,
+)
 from events.models import Event, Track
+from submissions.models import Project, ProjectStatus
+from teams.models import Team, TeamMembership
+
+logger = logging.getLogger('importer.seed_fixtures')
 
 SEED_TOKENS = {
     'organizer': 'rubric_seed_organizer_tok_9f8e7d6c5b4a',
@@ -37,7 +66,11 @@ def find_fixtures_file(explicit_path=None):
 
 
 class Command(BaseCommand):
-    help = "Seed minimal fixtures (Event, Tracks, and D-11 personas) from fixtures.json"
+    help = (
+        "Seed the full fixture dataset (Event, Tracks, Judges, Teams, "
+        "Projects, D-11 personas) from fixtures.json — idempotent by "
+        "external_id throughout."
+    )
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -56,16 +89,22 @@ class Command(BaseCommand):
         with open(fixture_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
-        # 1. Organizer account (dedicated seed account, no fixture equivalent)
-        organizer_user, _ = User.objects.update_or_create(
-            email='organizer@rubric.local',
-            defaults={
-                'display_name': 'Organizer',
-                'is_site_admin': True,
-            },
-        )
+        with transaction.atomic():
+            event = self._import_event(data)
+            track_map = self._import_tracks(data, event)
+            self._import_organizer(event)
+            self._import_judges(data, event, track_map)
+            team_map = self._import_teams(data, event)
+            self._import_projects(data, event, track_map, team_map)
+            self._import_persona_tokens(data, event)
 
-        # 2. Event (submissions_close_at verbatim from fixture)
+        self._print_seed_tokens()
+
+    # ------------------------------------------------------------------
+    # Event + Tracks
+    # ------------------------------------------------------------------
+
+    def _import_event(self, data):
         evt_data = data['event']
         evt_id = evt_data['id']
         evt_name = evt_data['name']
@@ -77,7 +116,17 @@ class Command(BaseCommand):
             )
 
         slug = slugify(evt_name) or 'sample-hack-2026'
-        event, _ = Event.objects.update_or_create(
+
+        # We need the organizer user for created_by — get or create first
+        organizer_user, _ = User.objects.update_or_create(
+            email='organizer@rubric.local',
+            defaults={
+                'display_name': 'Organizer',
+                'is_site_admin': True,
+            },
+        )
+
+        event, created = Event.objects.update_or_create(
             external_id=evt_id,
             defaults={
                 'name': evt_name,
@@ -86,143 +135,251 @@ class Command(BaseCommand):
                 'created_by': organizer_user,
             },
         )
+        action = 'created' if created else 'updated'
+        self.stdout.write(f"  Event '{evt_name}' ({evt_id}) {action}")
+        return event
 
-        # 3. Tracks
+    def _import_tracks(self, data, event):
+        """Import tracks, return {external_id: Track} map."""
+        track_map = {}
         for t in data.get('tracks', []):
-            Track.objects.update_or_create(
+            track, _ = Track.objects.update_or_create(
                 external_id=t['id'],
                 defaults={
                     'name': t['name'],
                     'event': event,
                 },
             )
+            track_map[t['id']] = track
+        self.stdout.write(f"  Tracks: {len(track_map)} imported")
+        return track_map
 
-        # 4. EventMembership & AuthToken for Organizer
+    # ------------------------------------------------------------------
+    # Organizer (dedicated seed account)
+    # ------------------------------------------------------------------
+
+    def _import_organizer(self, event):
+        organizer_user, _ = User.objects.update_or_create(
+            email='organizer@rubric.local',
+            defaults={
+                'display_name': 'Organizer',
+                'is_site_admin': True,
+            },
+        )
         EventMembership.objects.update_or_create(
             event=event,
             user=organizer_user,
             role=EventRole.ORGANIZER,
         )
-        org_token_hash = AuthToken.hash_token(SEED_TOKENS['organizer'])
+        self._upsert_token(organizer_user, 'seed:organizer', SEED_TOKENS['organizer'])
+
+    # ------------------------------------------------------------------
+    # Judges (all 30)
+    # ------------------------------------------------------------------
+
+    def _import_judges(self, data, event, track_map):
+        judges = data.get('judges', [])
+        for j in judges:
+            user, _ = User.objects.update_or_create(
+                external_id=j['id'],
+                defaults={
+                    'email': j['email'],
+                    'display_name': j['name'],
+                    'is_site_admin': False,
+                },
+            )
+            membership, _ = EventMembership.objects.update_or_create(
+                event=event,
+                user=user,
+                role=EventRole.JUDGE,
+            )
+
+            # JudgeTrackEligibility — one row per track in judges[].tracks
+            for track_ext_id in j.get('tracks', []):
+                track = track_map.get(track_ext_id)
+                if track:
+                    JudgeTrackEligibility.objects.get_or_create(
+                        event_membership=membership,
+                        track=track,
+                    )
+
+        self.stdout.write(f"  Judges: {len(judges)} imported")
+
+    # ------------------------------------------------------------------
+    # Teams (all 40)
+    # ------------------------------------------------------------------
+
+    def _import_teams(self, data, event):
+        """Import teams and their members. Returns {external_id: Team} map."""
+        teams = data.get('teams', [])
+        team_map = {}
+
+        for t in teams:
+            # Generate a deterministic invite code from the external_id
+            # so re-runs produce the same code
+            invite_code = f"invite-{t['id']}"
+
+            team, _ = Team.objects.update_or_create(
+                external_id=t['id'],
+                defaults={
+                    'name': t['name'],
+                    'event': event,
+                    'invite_code': invite_code,
+                },
+            )
+            team_map[t['id']] = team
+
+            # Members — emails → get-or-create User + TeamMembership +
+            # EventMembership(PARTICIPANT)
+            for member_email in t.get('members', []):
+                user, _ = User.objects.get_or_create(
+                    email=member_email,
+                    defaults={
+                        'display_name': member_email.split('@')[0],
+                        'is_site_admin': False,
+                    },
+                )
+                TeamMembership.objects.get_or_create(
+                    team=team,
+                    user=user,
+                )
+                EventMembership.objects.get_or_create(
+                    event=event,
+                    user=user,
+                    role=EventRole.PARTICIPANT,
+                )
+
+        self.stdout.write(f"  Teams: {len(teams)} imported")
+        return team_map
+
+    # ------------------------------------------------------------------
+    # Projects (all 41, with corrected duplicate direction)
+    # ------------------------------------------------------------------
+
+    def _import_projects(self, data, event, track_map, team_map):
+        projects = data.get('projects', [])
+
+        # First pass: create/update all projects without is_duplicate_of
+        for p in projects:
+            track = track_map.get(p['track'])
+            team = team_map.get(p['team'])
+
+            submitted_at = parse_datetime(p.get('submitted_at', ''))
+            if submitted_at and timezone.is_naive(submitted_at):
+                submitted_at = timezone.make_aware(
+                    submitted_at, timezone=timezone.utc
+                )
+
+            Project.objects.update_or_create(
+                external_id=p['id'],
+                defaults={
+                    'event': event,
+                    'team': team,
+                    'track': track,
+                    'title': p['title'],
+                    'summary': p.get('summary', ''),
+                    'description': p.get('description', ''),
+                    'repo_url': p.get('repo_url', ''),
+                    'demo_video_url': p.get('demo_video_url', ''),
+                    'live_url': p.get('live_url', ''),
+                    'tech_tags': p.get('tech_tags', []),
+                    'status': ProjectStatus.SUBMITTED,
+                    'submitted_at': submitted_at,
+                },
+            )
+
+        # Second pass: set the duplicate flag with the CORRECT direction.
+        # SCHEMA.md §1.1 + NORMALIZATION.md D-02:
+        #   prj_07 (earlier, 04:29) flags itself against prj_41 (later, 17:57).
+        #   prj_07.is_duplicate_of = prj_41; prj_41.is_duplicate_of = null.
+        #
+        # The two projects are: same team (tm_07), same title ("Dry Harbour"),
+        # same track (trk_03), submitted ~13h apart.
+        try:
+            prj_07 = Project.objects.get(external_id='prj_07')
+            prj_41 = Project.objects.get(external_id='prj_41')
+
+            prj_07.is_duplicate_of = prj_41
+            prj_07.duplicate_flag_reason = (
+                "Same team (tm_07), same title ('Dry Harbour'), same track "
+                "(trk_03), submitted ~13h apart. Earlier submission flagged "
+                "against later canonical one per NORMALIZATION.md D-02."
+            )
+            prj_07.save()
+
+            # Ensure the later/canonical project is NOT flagged
+            prj_41.is_duplicate_of = None
+            prj_41.duplicate_flag_reason = None
+            prj_41.save()
+
+            logger.info(
+                "Duplicate flag set: prj_07.is_duplicate_of = prj_41 "
+                "(earlier → later, per D-02). AuditLogEntry deferred to G5."
+            )
+        except Project.DoesNotExist:
+            logger.warning(
+                "Could not set duplicate flag — prj_07 and/or prj_41 not found."
+            )
+
+        self.stdout.write(f"  Projects: {len(projects)} imported")
+
+    # ------------------------------------------------------------------
+    # Persona tokens (the four from .dogfood.toml)
+    # ------------------------------------------------------------------
+
+    def _import_persona_tokens(self, data, event):
+        """
+        Ensure the four D-11 persona tokens exist.
+        Does not recreate users — they should already exist from the
+        judge/team/organizer import above.
+        """
+        # judge_a → jdg_07
+        judge_a = User.objects.get(external_id='jdg_07')
+        self._upsert_token(judge_a, 'seed:judge_a', SEED_TOKENS['judge_a'])
+
+        # judge_b → jdg_29
+        judge_b = User.objects.get(external_id='jdg_29')
+        self._upsert_token(judge_b, 'seed:judge_b', SEED_TOKENS['judge_b'])
+
+        # participant → first member of tm_07
+        tm_07 = data.get('teams', [])
+        tm_07_info = next((t for t in tm_07 if t.get('id') == 'tm_07'), None)
+        if tm_07_info and tm_07_info.get('members'):
+            participant_email = tm_07_info['members'][0]
+            participant_user = User.objects.get(email=participant_email)
+            self._upsert_token(
+                participant_user, 'seed:participant',
+                SEED_TOKENS['participant'],
+            )
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _upsert_token(self, user, label, raw_token):
+        """Create or update an AuthToken for the user."""
+        token_hash = AuthToken.hash_token(raw_token)
         AuthToken.objects.update_or_create(
-            user=organizer_user,
-            label='seed:organizer',
+            user=user,
+            label=label,
             defaults={
-                'token_hash': org_token_hash,
+                'token_hash': token_hash,
                 'expires_at': None,
             },
         )
 
-        # 5. judge_a -> jdg_07 (Iva Petrova)
-        jdg_07_info = next(
-            (j for j in data.get('judges', []) if j.get('id') == 'jdg_07'),
-            None,
-        )
-        judge_a_email = (
-            jdg_07_info['email'] if jdg_07_info else 'iva.petrova@example.org'
-        )
-        judge_a_name = (
-            jdg_07_info['name'] if jdg_07_info else 'Iva Petrova'
-        )
-        judge_a_user, _ = User.objects.update_or_create(
-            external_id='jdg_07',
-            defaults={
-                'email': judge_a_email,
-                'display_name': judge_a_name,
-                'is_site_admin': False,
-            },
-        )
-        EventMembership.objects.update_or_create(
-            event=event,
-            user=judge_a_user,
-            role=EventRole.JUDGE,
-        )
-        ja_token_hash = AuthToken.hash_token(SEED_TOKENS['judge_a'])
-        AuthToken.objects.update_or_create(
-            user=judge_a_user,
-            label='seed:judge_a',
-            defaults={
-                'token_hash': ja_token_hash,
-                'expires_at': None,
-            },
-        )
-
-        # 6. judge_b -> jdg_29 (Ines Rocha)
-        jdg_29_info = next(
-            (j for j in data.get('judges', []) if j.get('id') == 'jdg_29'),
-            None,
-        )
-        judge_b_email = (
-            jdg_29_info['email'] if jdg_29_info else 'ines.rocha@example.org'
-        )
-        judge_b_name = (
-            jdg_29_info['name'] if jdg_29_info else 'Ines Rocha'
-        )
-        judge_b_user, _ = User.objects.update_or_create(
-            external_id='jdg_29',
-            defaults={
-                'email': judge_b_email,
-                'display_name': judge_b_name,
-                'is_site_admin': False,
-            },
-        )
-        EventMembership.objects.update_or_create(
-            event=event,
-            user=judge_b_user,
-            role=EventRole.JUDGE,
-        )
-        jb_token_hash = AuthToken.hash_token(SEED_TOKENS['judge_b'])
-        AuthToken.objects.update_or_create(
-            user=judge_b_user,
-            label='seed:judge_b',
-            defaults={
-                'token_hash': jb_token_hash,
-                'expires_at': None,
-            },
-        )
-
-        # 7. participant -> any one tm_07 member's email
-        tm_07_info = next(
-            (t for t in data.get('teams', []) if t.get('id') == 'tm_07'),
-            None,
-        )
-        participant_email = (
-            tm_07_info['members'][0]
-            if (tm_07_info and tm_07_info.get('members'))
-            else 'sana7@example.org'
-        )
-        participant_user, _ = User.objects.update_or_create(
-            email=participant_email,
-            defaults={
-                'display_name': 'Sana (tm_07)',
-                'is_site_admin': False,
-            },
-        )
-        EventMembership.objects.update_or_create(
-            event=event,
-            user=participant_user,
-            role=EventRole.PARTICIPANT,
-        )
-        part_token_hash = AuthToken.hash_token(SEED_TOKENS['participant'])
-        AuthToken.objects.update_or_create(
-            user=participant_user,
-            label='seed:participant',
-            defaults={
-                'token_hash': part_token_hash,
-                'expires_at': None,
-            },
-        )
-
-        # Output the four lines for .dogfood.toml
+    def _print_seed_tokens(self):
+        self.stdout.write("")
+        self.stdout.write("seeded. test logins:")
         self.stdout.write(
-            f"organizer: Authorization: Bearer {SEED_TOKENS['organizer']}"
+            f"  organizer: Authorization: Bearer {SEED_TOKENS['organizer']}"
         )
         self.stdout.write(
-            f"judge_a: Authorization: Bearer {SEED_TOKENS['judge_a']}"
+            f"  judge_a:   Authorization: Bearer {SEED_TOKENS['judge_a']}"
         )
         self.stdout.write(
-            f"judge_b: Authorization: Bearer {SEED_TOKENS['judge_b']}"
+            f"  judge_b:   Authorization: Bearer {SEED_TOKENS['judge_b']}"
         )
         self.stdout.write(
-            f"participant: Authorization: Bearer {SEED_TOKENS['participant']}"
+            f"  participant: Authorization: Bearer {SEED_TOKENS['participant']}"
         )

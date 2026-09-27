@@ -108,3 +108,34 @@ class EventMembership(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.event.slug} ({self.role})"
+
+
+class JudgeTrackEligibility(models.Model):
+    """
+    Which tracks a judge is eligible to review (SCHEMA.md §1.1, F3).
+    The fixture's judges[].tracks array imports directly into this,
+    one row per track.
+    """
+    event_membership = models.ForeignKey(
+        EventMembership,
+        on_delete=models.CASCADE,
+        related_name='track_eligibilities',
+    )
+    track = models.ForeignKey(
+        'events.Track',
+        on_delete=models.CASCADE,
+        related_name='judge_eligibilities',
+    )
+
+    class Meta:
+        db_table = 'accounts_judgetrackeligibility'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['event_membership', 'track'],
+                name='unique_judge_track',
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.event_membership.user.email} eligible for {self.track.name}"
+

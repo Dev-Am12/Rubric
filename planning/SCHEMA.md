@@ -252,7 +252,7 @@ services.judging.get_scores(actor, judge_external_id=None):
 | `tracks[]` | Track | `external_id = trk.id` |
 | `judges[]` | User + EventMembership(role=JUDGE) + JudgeTrackEligibility per entry in `judges[].tracks` | `external_id = jdg.id`; `email` from the fixture; each track in `judges[].tracks` becomes one `JudgeTrackEligibility` row (fixed by the stress test, F3) |
 | `teams[]` | Team + TeamMembership | `external_id = tm.id`; members are emails → get-or-create User + EventMembership(role=PARTICIPANT) |
-| `projects[]` | Project | `external_id = prj.id`; `prj_41` gets `is_duplicate_of = prj_07` set explicitly by the importer (matched by team + near-identical title, logged to FixtureImportLog, not silently inferred at query time) |
+| `projects[]` | Project | `external_id = prj.id`; `prj_07` gets `is_duplicate_of = prj_41` set explicitly by the importer — the earlier submission (04:29) flags itself against the later canonical one (17:57), matched by team + identical title, logged to FixtureImportLog, not silently inferred at query time (corrected G2: was backwards here, now matches §1.1 and NORMALIZATION.md D-02) |
 | `scores[]` | JudgeAssignment (status=COMPLETED) + Ballot + BallotScore | one assignment+ballot per `(judge, project)` pair; `criteria` dict → BallotScore rows against the seeded default rubric |
 
 Import is a management command (`seed_fixtures`), re-runnable (upsert by `external_id`), and ends by printing the four `.dogfood.toml` auth lines in the spec's own worked-example style (RESEARCH §7.5): `seeded. test logins: organizer ... judge_a ... judge_b ... participant ...`.
