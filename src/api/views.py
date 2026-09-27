@@ -20,7 +20,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 
 from submissions.views import gallery_view, submit_view
-from services.judging import get_scores, progress, submit_ballot
+from services.judging import get_scores, progress, submit_ballot, export_csv
 
 
 def judge_scores_view(request):
@@ -54,10 +54,11 @@ def organizer_progress_view(request):
     return JsonResponse(progress(request.actor))
 
 
+@require_GET
 def csv_export_view(request):
-    """P-11 csv_export placeholder (/api/export.csv) — filled in at G4."""
-    return HttpResponse(
-        "rank,project_id,score\n",
-        content_type="text/csv",
-        status=200,
-    )
+    """P-11 csv_export endpoint (/api/export.csv). Organizer-only."""
+    content = export_csv(request.actor)
+    response = HttpResponse(content, content_type="text/csv; charset=utf-8", status=200)
+    response['Content-Disposition'] = 'attachment; filename="export.csv"'
+    return response
+

@@ -339,6 +339,7 @@ def gallery(actor, q=None, track=None, tag=None):
     """
     qs = Project.objects.filter(
         status=ProjectStatus.SUBMITTED,
+        is_duplicate_of__isnull=True,
     ).select_related('team', 'track', 'event').order_by('-submitted_at')
 
     if q:

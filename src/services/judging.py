@@ -135,3 +135,66 @@ def progress(actor):
     total = projects.count()
     completed = projects.filter(judge_assignments__status=AssignmentStatus.COMPLETED).distinct().count()
     return {'completed_projects': completed, 'total_projects': total}
+
+
+def export_csv(actor):
+    """Export real per-project data as CSV: raw mean, normalized mean, rank, review count, flags."""
+    if not actor.is_organizer:
+        raise PermissionDenied
+    import csv
+    import io
+    from judging.models import NormalizationRun
+    from services import normalization as norm_services
+
+    run_record = NormalizationRun.objects.filter(event=actor.event).order_by('-computed_at', '-id').first()
+    if run_record is None:
+        run_record = norm_services.run(actor)
+
+    params = run_record.parameters
+    flags_map = params.get('project_flags', {})
+    review_counts = params.get('project_review_counts', {})
+
+    score_rows = list(run_record.scores.select_related('project'))
+    score_rows.sort(
+        key=lambda r: (
+            0 if r.rank is not None else 1,
+            r.rank if r.rank is not None else 0,
+            r.project.external_id or f'{r.project.pk:020d}',
+        )
+    )
+
+    output = io.StringIO(newline='')
+    writer = csv.writer(output, lineterminator='\n')
+    writer.writerow(['project_id', 'raw_mean', 'normalized_mean', 'rank', 'review_count', 'flags'])
+    for row in score_rows:
+        project_key = row.project.external_id or f'project:{row.project.pk}'
+        proj_flags = flags_map.get(project_key, [])
+        flag_labels = []
+        for f in proj_flags:
+            ftype = f.get('type', str(f)) if isinstance(f, dict) else str(f)
+            flag_labels.append(ftype)
+            if ftype == 'thin_batch':
+                flag_labels.append('thin')
+            elif ftype == 'constant_judge':
+                flag_labels.append('constant-judge')
+        if row.project.is_duplicate_of is not None and 'duplicate' not in "".join(flag_labels):
+            flag_labels.append('duplicate')
+
+        # Stable de-duplication preserving order
+        deduped_flags = []
+        seen = set()
+        for fl in flag_labels:
+            if fl not in seen:
+                seen.add(fl)
+                deduped_flags.append(fl)
+
+        flags_str = ";".join(deduped_flags)
+        writer.writerow([
+            project_key,
+            f"{row.raw_mean:.4f}" if row.raw_mean is not None else '',
+            f"{row.normalized_mean:.4f}" if row.normalized_mean is not None else '',
+            row.rank if row.rank is not None else '',
+            review_counts.get(project_key, 0),
+            flags_str,
+        ])
+    return output.getvalue()

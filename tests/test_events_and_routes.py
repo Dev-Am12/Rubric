@@ -65,8 +65,10 @@ class P11RouteResolutionTest(TestCase):
         resp = client.get(reverse('judge_scores') + '?judge=jdg_07')
         self.assertEqual(resp.status_code, 401)
 
+        # In G4, csv_export is real and organizer-only (rejects anonymous with 401)
         resp = client.get(reverse('csv_export'))
-        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.status_code, 401)
+
 
 
 class PrizeModelTest(TestCase):

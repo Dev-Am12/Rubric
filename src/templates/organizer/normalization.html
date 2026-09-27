@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Normalization Proof & Rankings — Organizer — Rubric{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1040px; margin: 0 auto; padding: var(--space-xl) var(--space-md);">
+
+  <!-- Header -->
+  <div style="margin-bottom: var(--space-lg); display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-md);">
+    <div>
+      <div style="display: flex; align-items: center; gap: var(--space-xs); margin-bottom: var(--space-xs);">
+        <a href="/organizer" style="color: var(--accent, #0284c7); text-decoration: none; font-size: 0.8125rem; font-weight: 500;">
+          ← Back to Dashboard
+        </a>
+      </div>
+      <h1 style="font-size: 1.75rem; font-weight: 700; margin: 0 0 var(--space-xs) 0;" id="normalization-title">
+        Normalization Proof & Final Rankings
+      </h1>
+      <p style="color: var(--text-secondary, #64748b); margin: 0; font-size: 0.9375rem;">
+        Component-aware empirical-Bayes score normalization artifact and deterministic rank shifts.
+      </p>
+    </div>
+
+    <!-- Actions -->
+    <div style="display: flex; gap: var(--space-sm); align-items: center; flex-wrap: wrap;">
+      <form method="post" action="/organizer/normalization" style="margin: 0;" id="form-run-normalization">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-secondary" id="btn-recompute-normalization" style="font-size: 0.875rem;">
+          Re-run Normalization
+        </button>
+      </form>
+      <a href="/organizer/normalization?format=csv" class="btn btn-secondary" id="btn-download-proof-csv" style="font-size: 0.875rem;">
+        Download Proof CSV
+      </a>
+      <a href="/api/export.csv" class="btn btn-primary" id="btn-export-final-csv" style="font-size: 0.875rem;">
+        Export CSV ▾
+      </a>
+    </div>
+  </div>
+
+  <!-- Run Metadata & Parameters Card -->
+  <div class="card" style="background: var(--bg-surface, #ffffff); border: 1px solid var(--border-subtle, #e2e8f0); border-radius: var(--radius-lg, 8px); padding: var(--space-lg); margin-bottom: var(--space-xl); box-shadow: 0 1px 3px rgba(0,0,0,0.05);" id="norm-parameters-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md); flex-wrap: wrap; gap: var(--space-xs);">
+      <h2 style="font-size: 1.125rem; font-weight: 600; margin: 0;">Run Parameters (Empirical Bayes)</h2>
+      <span style="font-size: 0.8125rem; color: var(--text-secondary, #64748b);" id="run-timestamp">
+        Run #{{ latest_run.pk }} computed at {{ latest_run.computed_at|date:"Y-m-d H:i:s" }}
+      </span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-md);">
+      
+      <div style="padding: var(--space-sm) var(--space-md); background: var(--bg-subtle, #f8fafc); border-radius: 6px; border: 1px solid var(--border-subtle, #e2e8f0);">
+        <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary, #64748b);">Method</div>
+        <div style="font-size: 0.9375rem; font-weight: 600; margin-top: 2px;">{{ latest_run.method_name }}</div>
+        <div style="font-size: 0.75rem; color: var(--text-secondary, #64748b);">κ₀={{ params.kappa0 }}, ν₀={{ params.nu0 }}</div>
+      </div>
+
+      <div style="padding: var(--space-sm) var(--space-md); background: var(--bg-subtle, #f8fafc); border-radius: 6px; border: 1px solid var(--border-subtle, #e2e8f0);">
+        <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary, #64748b);">Ranking Scope</div>
+        <div style="font-size: 0.9375rem; font-weight: 600; margin-top: 2px; text-transform: capitalize;">{{ params.ranking_scope }}</div>
+        <div style="font-size: 0.75rem; color: var(--text-secondary, #64748b);">Components: {{ params.component_count }}</div>
+      </div>
+
+      <div style="padding: var(--space-sm) var(--space-md); background: var(--bg-subtle, #f8fafc); border-radius: 6px; border: 1px solid var(--border-subtle, #e2e8f0);">
+        <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary, #64748b);">Global Pool</div>
+        <div style="font-size: 0.9375rem; font-weight: 600; margin-top: 2px;">μ₀ = {{ params.pooled_mean|floatformat:3 }}</div>
+        <div style="font-size: 0.75rem; color: var(--text-secondary, #64748b);">σ₀² = {{ params.pooled_variance|floatformat:3 }}</div>
+      </div>
+
+      <div style="padding: var(--space-sm) var(--space-md); background: var(--bg-subtle, #f8fafc); border-radius: 6px; border: 1px solid var(--border-subtle, #e2e8f0);">
+        <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary, #64748b);">Evaluated</div>
+        <div style="font-size: 0.9375rem; font-weight: 600; margin-top: 2px;">{{ ranked_scores }}/{{ total_scores }} ranked</div>
+        <div style="font-size: 0.75rem; color: var(--text-secondary, #64748b);">{{ excluded_scores }} excluded (duplicate)</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Normalization Proof Table Card -->
+  <div class="card" style="background: var(--bg-surface, #ffffff); border: 1px solid var(--border-subtle, #e2e8f0); border-radius: var(--radius-lg, 8px); padding: var(--space-lg); box-shadow: 0 1px 3px rgba(0,0,0,0.05); overflow-x: auto;" id="proof-table-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+      <h2 style="font-size: 1.125rem; font-weight: 600; margin: 0;">The Normalization Proof Table</h2>
+      <span style="font-size: 0.8125rem; color: var(--text-secondary, #64748b);">
+        Sorted by normalized rank
+      </span>
+    </div>
+
+    <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;" id="proof-table">
+      <thead>
+        <tr style="border-bottom: 2px solid var(--border-subtle, #e2e8f0); text-align: left; background: var(--bg-subtle, #f8fafc);">
+          <th style="padding: 10px 12px;">Norm Rank</th>
+          <th style="padding: 10px 12px;">Project</th>
+          <th style="padding: 10px 12px;">Raw Mean</th>
+          <th style="padding: 10px 12px;">Norm Mean</th>
+          <th style="padding: 10px 12px;">Raw Rank</th>
+          <th style="padding: 10px 12px;">Δ Rank</th>
+          <th style="padding: 10px 12px;">Reviews</th>
+          <th style="padding: 10px 12px;">Flags</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in table_rows %}
+          <tr style="border-bottom: 1px solid var(--border-subtle, #e2e8f0); {% if row.is_duplicate %}background: #fffbeb;{% endif %}" id="row-{{ row.project_key }}">
+            <!-- Normalized Rank -->
+            <td style="padding: 10px 12px; font-weight: 700;">
+              {% if row.normalized_rank %}
+                #{{ row.normalized_rank }}
+              {% else %}
+                <span style="color: #92400e; font-size: 0.75rem; font-weight: 600; padding: 2px 6px; background: #fef3c7; border-radius: 4px;">
+                  EXCLUDED
+                </span>
+              {% endif %}
+            </td>
+
+            <!-- Project ID & Title -->
+            <td style="padding: 10px 12px;">
+              <div style="font-weight: 600;">
+                <a href="/projects/{{ row.project.pk }}" style="color: var(--text-primary, #0f172a); text-decoration: none;">
+                  {{ row.project_key }}
+                </a>
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-secondary, #64748b);">
+                {{ row.project.title|truncatechars:35 }}
+              </div>
+            </td>
+
+            <!-- Raw Mean -->
+            <td style="padding: 10px 12px; font-family: monospace;">
+              {% if row.raw_mean %}
+                {{ row.raw_mean|floatformat:4 }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+
+            <!-- Normalized Mean -->
+            <td style="padding: 10px 12px; font-family: monospace; font-weight: 600; color: var(--accent, #0284c7);">
+              {% if row.normalized_mean %}
+                {{ row.normalized_mean|floatformat:4 }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+
+            <!-- Raw Rank -->
+            <td style="padding: 10px 12px; color: var(--text-secondary, #64748b);">
+              {% if row.raw_rank %}
+                #{{ row.raw_rank }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+
+            <!-- Rank Change -->
+            <td style="padding: 10px 12px;">
+              {% if row.rank_change is not None %}
+                {% if row.rank_change > 0 %}
+                  <span style="color: #16a34a; font-weight: 600;" title="Gained {{ row.rank_change }} positions">
+                    +{{ row.rank_change }} ↑
+                  </span>
+                {% elif row.rank_change < 0 %}
+                  <span style="color: #dc2626; font-weight: 600;" title="Dropped {{ row.rank_change }} positions">
+                    {{ row.rank_change }} ↓
+                  </span>
+                {% else %}
+                  <span style="color: var(--text-secondary, #64748b);">
+                    =
+                  </span>
+                {% endif %}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+
+            <!-- Review Count -->
+            <td style="padding: 10px 12px; text-align: center;">
+              {{ row.review_count }}
+            </td>
+
+            <!-- Flags -->
+            <td style="padding: 10px 12px;">
+              <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                {% for f in row.flags %}
+                  {% if f.type == 'thin_batch' %}
+                    <span style="font-size: 0.75rem; padding: 2px 6px; background: #fef3c7; color: #92400e; border-radius: 4px;" title="Thin batch: {{ f.review_count }}/{{ f.target_k }} reviews">
+                      thin
+                    </span>
+                  {% elif f.type == 'constant_judge' %}
+                    <span style="font-size: 0.75rem; padding: 2px 6px; background: #fee2e2; color: #991b1b; border-radius: 4px;" title="Reviewed by constant judge: {{ f.judge_external_id }}">
+                      constant-judge
+                    </span>
+                  {% elif f.type == 'duplicate' %}
+                    <span style="font-size: 0.75rem; padding: 2px 6px; background: #fee2e2; color: #991b1b; border-radius: 4px;" title="Duplicate of {{ f.duplicate_of }}">
+                      duplicate
+                    </span>
+                  {% else %}
+                    <span style="font-size: 0.75rem; padding: 2px 6px; background: var(--bg-subtle, #f1f5f9); color: var(--text-secondary, #64748b); border-radius: 4px;">
+                      {{ f.type }}
+                    </span>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+{% endblock %}

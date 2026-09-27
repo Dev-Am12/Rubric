@@ -154,3 +154,31 @@ organizer_progress_page:
   note: >
     Organizer progress dashboard UI (UX.md §1, §3). Shows project review
     completion numbers.
+
+organizer_dashboard:
+  declared: true
+  path: /organizer
+  method: GET, POST
+  auth: organizer
+  note: >
+    Organizer dashboard UI (UX.md §3). Displays live review progress,
+    track under-coverage, graph health metrics, and integrity flags with
+    duplicate-restore action.
+
+organizer_assignments:
+  declared: true
+  path: /organizer/assignments
+  method: GET, POST
+  auth: organizer
+  note: >
+    Organizer assignments management (UX.md §1, API.md §2). Trigger
+    assignment runs and inspect AssignmentRun history and graph connectivity.
+
+organizer_normalization:
+  declared: true
+  path: /organizer/normalization
+  method: GET, POST
+  auth: organizer
+  note: >
+    Organizer normalization proof view (UX.md §1, §3, API.md §2). Trigger
+    normalization runs and view the deterministic raw/normalized/rank-change table.

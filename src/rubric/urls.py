@@ -17,6 +17,11 @@ from judging.views import (
     ballot_autosave_view,
     organizer_progress_page_view,
 )
+from judging.views_organizer import (
+    organizer_dashboard_view,
+    organizer_assignments_view,
+    organizer_normalization_view,
+)
 from submissions.views import (
     gallery_view,
     submit_view,
@@ -28,11 +33,14 @@ from submissions.views import (
 # Admin is intentionally not shipped (PLAN.md P-08)
 urlpatterns = [
     # -----------------------------------------------------------------------
-    # Judging UI routes (UX.md §1, §2)
+    # Judging & Organizer UI routes (UX.md §1, §2, §3)
     # -----------------------------------------------------------------------
     path('judge/queue', judge_queue_view, name='judge_queue'),
     path('judge/ballots/<int:assignment_id>', ballot_view, name='judge_ballot'),
     path('judge/ballots/<int:assignment_id>/autosave', ballot_autosave_view, name='judge_ballot_autosave'),
+    path('organizer', organizer_dashboard_view, name='organizer_dashboard'),
+    path('organizer/assignments', organizer_assignments_view, name='organizer_assignments'),
+    path('organizer/normalization', organizer_normalization_view, name='organizer_normalization'),
     path('organizer/progress', organizer_progress_page_view, name='organizer_progress_page'),
 
     # -----------------------------------------------------------------------

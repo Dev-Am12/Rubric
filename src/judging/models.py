@@ -60,3 +60,45 @@ class BallotScore(models.Model):
     class Meta:
         db_table = 'judging_ballotscore'
         constraints = [models.UniqueConstraint(fields=['ballot', 'criterion'], name='uniq_ballot_criterion_score')]
+
+
+class NormalizationRun(models.Model):
+    event = models.ForeignKey('events.Event', on_delete=models.CASCADE, related_name='normalization_runs')
+    computed_at = models.DateTimeField(default=timezone.now)
+    method_name = models.CharField(max_length=128)
+    parameters = models.JSONField(default=dict)
+
+    class Meta:
+        db_table = 'judging_normalizationrun'
+        ordering = ['id']
+
+
+class NormalizedScore(models.Model):
+    run = models.ForeignKey(NormalizationRun, on_delete=models.CASCADE, related_name='scores')
+    project = models.ForeignKey('submissions.Project', on_delete=models.CASCADE, related_name='normalized_scores')
+    raw_mean = models.DecimalField(max_digits=14, decimal_places=8, null=True, blank=True)
+    normalized_mean = models.DecimalField(max_digits=14, decimal_places=8, null=True, blank=True)
+    rank = models.PositiveIntegerField(null=True, blank=True)
+    judge_graph_component_id = models.PositiveIntegerField(null=True, blank=True)
+    judge_graph_fiedler_value = models.FloatField(null=True, blank=True)
+    rank_ci_low = models.DecimalField(max_digits=14, decimal_places=8, null=True, blank=True)
+    rank_ci_high = models.DecimalField(max_digits=14, decimal_places=8, null=True, blank=True)
+
+    class Meta:
+        db_table = 'judging_normalizedscore'
+        ordering = ['project_id']
+        constraints = [models.UniqueConstraint(fields=['run', 'project'], name='uniq_normalized_score_run_project')]
+
+
+class AssignmentRun(models.Model):
+    event = models.ForeignKey('events.Event', on_delete=models.CASCADE, related_name='assignment_runs')
+    run_at = models.DateTimeField(default=timezone.now)
+    target_k = models.PositiveIntegerField()
+    seed = models.BigIntegerField()
+    under_coverage = models.JSONField(default=list)
+    connectivity_report = models.JSONField(default=dict)
+    anchor_injections = models.JSONField(default=list)
+
+    class Meta:
+        db_table = 'judging_assignmentrun'
+        ordering = ['id']

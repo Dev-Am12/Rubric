@@ -18,6 +18,7 @@ that says so explicitly, so the history stays honest.
 - [8. User accounts don't carry Django's admin baggage](#8-user-accounts-dont-carry-djangos-admin-baggage)
 - [9. CSRF enforcement depends on how you authenticated, not a global toggle](#9-csrf-enforcement-depends-on-how-you-authenticated-not-a-global-toggle)
 - [10. Judge score isolation uses the authenticated user identity](#10-judge-score-isolation-uses-the-authenticated-user-identity)
+- [11. Normalization claims are corrected against measured fixture behavior](#11-normalization-claims-are-corrected-against-measured-fixture-behavior)
 
 ---
 
@@ -118,3 +119,13 @@ that says so explicitly, so the history stays honest.
 **Rationale:** An adversarial review found that two legitimate non-fixture judges can both have `external_id=None`. Filtering the caller's scores by that nullable field returns both judges' ballots. The isolation function had already been declared authoritative and stress-tested during planning, but this remaining edge case was caught by a dedicated adversarial-review pass before shipment, not by chance or by the fixture-only acceptance checker. Database identity gives each caller an unambiguous scope, including judges with no external fixture id.
 
 **In plain terms:** A judge's own scores are selected by their account, never by an optional fixture id. A targeted review caught the null-id collision before it shipped.
+
+---
+
+## 11. Normalization claims are corrected against measured fixture behavior
+
+**Decision:** Describe constant judges by the invariant the shrinkage formula actually provides: their z-score contribution is a fixed, non-differentiating offset across their projects, not necessarily a value near zero. Treat rank changes as context-sensitive display movement and assess score changes alongside local score gaps and review counts.
+
+**Rationale:** D-03's earlier wording said a constant judge's contribution "converges toward zero." We implemented the displayed formula exactly and measured the real fixture: `jdg_07` contributes 0.5115488667 to each of `prj_09`, `prj_17`, and `prj_19`. The equal contribution is non-differentiating, while its absolute value depends on the pooled mean. Leave-one-out measurements showed score changes for `prj_09` and `prj_17` in the same range as a non-constant three-assignment control; `prj_19`'s larger change coincides with the remaining reviewer count falling to one. Baseline neighbor gaps also showed much tighter score spacing around `prj_09` and `prj_17` than around the control projects. Rank movement was therefore dropped as a T2 assertion: rank is sensitive to local crowding even when score changes are comparable. This correction came from measuring the fixture before asserting the test, not from changing the formula to fit an overstrong claim.
+
+**In plain terms:** The formula did not make the constant judge's contribution zero; it made the contribution the same on each of that judge's projects. We measured score changes and neighboring score gaps before revising the claim, and documented that ranks can move sharply in a crowded field.

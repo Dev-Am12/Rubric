@@ -27,6 +27,7 @@
           <li><a href="/judge/queue" id="nav-judge-queue">Judge Queue</a></li>
         {% endif %}
         {% if request.actor and request.actor.is_organizer %}
+          <li><a href="/organizer" id="nav-organizer-dashboard">Dashboard</a></li>
           <li><a href="/organizer/progress" id="nav-organizer-progress">Progress</a></li>
         {% endif %}
         <li><a href="/projects/new" id="nav-submit" class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;">Submit Project</a></li>

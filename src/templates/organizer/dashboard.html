@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Organizer Dashboard — Rubric{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 860px; margin: 0 auto; padding: var(--space-xl) var(--space-md);">
+
+  <!-- Dashboard Header -->
+  <div style="margin-bottom: var(--space-lg); display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-md);">
+    <div>
+      <div style="display: flex; align-items: center; gap: var(--space-xs); margin-bottom: var(--space-xs);">
+        <span class="badge" style="background: var(--accent-subtle, #e0f2fe); color: var(--accent, #0284c7); font-weight: 600; font-size: 0.75rem; padding: 2px 8px; border-radius: var(--radius-sm, 4px); border: 1px solid var(--accent-border, #bae6fd);">
+          Organizer Dashboard
+        </span>
+        <span style="font-size: 0.75rem; color: var(--text-secondary, #64748b);" id="poll-indicator">
+          • Auto-refreshes every 10s
+        </span>
+      </div>
+      <h1 style="font-size: 1.75rem; font-weight: 700; margin: 0 0 var(--space-xs) 0;" id="dashboard-title">
+        Hackathon Evaluation Health
+      </h1>
+      <p style="color: var(--text-secondary, #64748b); margin: 0; font-size: 0.9375rem;">
+        Live review coverage, judge-graph connectivity, and integrity flags per UX.md §3.
+      </p>
+    </div>
+
+    <!-- Quick action links -->
+    <div style="display: flex; gap: var(--space-sm); align-items: center;">
+      <a href="/organizer/assignments" class="btn btn-secondary" id="btn-assignments-page" style="font-size: 0.875rem;">
+        Assignments
+      </a>
+      <a href="/organizer/normalization" class="btn btn-secondary" id="btn-normalization-page" style="font-size: 0.875rem;">
+        Normalization Proof
+      </a>
+      <a href="/api/export.csv" class="btn btn-primary" id="btn-export-csv" style="font-size: 0.875rem;">
+        Export CSV ▾
+      </a>
+    </div>
+  </div>
+
+  <!-- Polling Container (UX.md §3 live data refresh) -->
+  <div id="dashboard-content" hx-get="/organizer" hx-trigger="every 10s" hx-select="#dashboard-content" hx-target="#dashboard-content" hx-swap="outerHTML">
+    
+    <!-- Main Dashboard Card -->
+    <div class="card" style="background: var(--bg-surface, #ffffff); border: 1px solid var(--border-subtle, #e2e8f0); border-radius: var(--radius-lg, 8px); box-shadow: 0 1px 3px rgba(0,0,0,0.05); overflow: hidden; margin-bottom: var(--space-xl);">
+      
+      <!-- Section 1: Progress & Under-coverage -->
+      <div style="padding: var(--space-lg); border-bottom: 1px solid var(--border-subtle, #e2e8f0);" id="section-progress">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-xs); font-size: 0.9375rem;">
+          <span style="font-weight: 600; color: var(--text-primary, #0f172a);">
+            Progress: <span id="progress-summary">{{ target_met_count }}/{{ total_projects }} projects have ≥{{ target_k }} reviews</span>
+          </span>
+          <span style="font-weight: 600; color: var(--accent, #0284c7);" id="progress-pct-label">
+            {{ progress_pct }}%
+          </span>
+        </div>
+
+        <!-- Progress bar -->
+        <div style="width: 100%; height: 12px; background: var(--bg-subtle, #f1f5f9); border-radius: 6px; overflow: hidden; margin-bottom: var(--space-sm);">
+          <div style="width: {{ progress_pct }}%; height: 100%; background: var(--accent, #0284c7); border-radius: 6px; transition: width 0.3s ease;" id="progress-bar-fill"></div>
+        </div>
+
+        <!-- Under-coverage indicator -->
+        <div id="under-coverage-block" style="font-size: 0.875rem;">
+          {% if under_covered_tracks %}
+            <div style="color: #b45309; display: flex; align-items: center; gap: 6px;" id="under-coverage-warning">
+              <span style="font-weight: 600;">Under-coverage:</span>
+              <span>{{ total_short_reviews }} review{{ total_short_reviews|pluralize }} short across {{ under_covered_tracks|length }} track{{ under_covered_tracks|length|pluralize }}</span>
+              <span>(incl. Track: {{ under_covered_tracks.0.track.name }} short by {{ under_covered_tracks.0.short_count }})</span>
+              <span>⚠</span>
+            </div>
+          {% else %}
+            <div style="color: #15803d; display: flex; align-items: center; gap: 6px;" id="under-coverage-ok">
+              <span>✓ All submitted projects meet the target review count of {{ target_k }}</span>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Section 2: Graph Health -->
+      <div style="padding: var(--space-lg); border-bottom: 1px solid var(--border-subtle, #e2e8f0); background: var(--bg-subtle, #f8fafc);" id="section-graph-health">
+        <div style="font-size: 0.8125rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary, #64748b); margin-bottom: var(--space-xs);">
+          Graph health (priority #1 signature feature)
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-sm);">
+          <div style="display: flex; align-items: center; gap: var(--space-xs); font-size: 1rem; font-weight: 600; color: var(--text-primary, #0f172a);" id="graph-health-status">
+            {% if n_components == 1 %}
+              <span style="color: #16a34a; font-size: 1.25rem; line-height: 1;" id="graph-status-dot">●</span>
+            {% else %}
+              <span style="color: #dc2626; font-size: 1.25rem; line-height: 1;" id="graph-status-dot">●</span>
+            {% endif %}
+            <span id="graph-health-summary">
+              {{ n_components }} connected component · {{ total_judges }}/{{ total_judges }} judges · Fiedler λ₂ = {{ fiedler_value|floatformat:4 }}
+            </span>
+          </div>
+
+          <div>
+            <a href="/organizer/assignments" id="view-connectivity-link" style="color: var(--accent, #0284c7); font-size: 0.875rem; text-decoration: none; font-weight: 500;">
+              [view connectivity graph →]
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Flags -->
+      <div style="padding: var(--space-lg); border-bottom: 1px solid var(--border-subtle, #e2e8f0);" id="section-flags">
+        <div style="font-size: 0.8125rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary, #64748b); margin-bottom: var(--space-sm);">
+          Flags
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: var(--space-sm);" id="flags-list">
+          
+          <!-- Constant-score judge flags -->
+          {% for cj in constant_judges %}
+            <div class="flag-row" id="flag-judge-{{ cj.judge_external_id }}" style="display: flex; align-items: flex-start; gap: 8px; color: #b45309; font-size: 0.9375rem;">
+              <span>⚠</span>
+              <span><strong>{{ cj.judge_external_id }}</strong> scored {{ cj.review_count }}/{{ cj.review_count }} assignments identically</span>
+            </div>
+          {% endfor %}
+
+          <!-- Thin-review-count projects -->
+          {% if thin_count %}
+            <div class="flag-row" id="flag-thin-projects" style="display: flex; align-items: flex-start; gap: 8px; color: #b45309; font-size: 0.9375rem;">
+              <span>⚠</span>
+              <span>
+                <strong>{{ thin_count }} projects</strong> have fewer than {{ target_k }} reviews
+                {% if compound_flagged_projects %}
+                  (incl. {{ compound_flagged_projects|join:", " }}, which is also affected by {{ constant_judges.0.judge_external_id|default:"constant-score judge" }} above)
+                {% endif %}
+              </span>
+            </div>
+          {% endif %}
+
+          <!-- Duplicate submissions with one-click restore -->
+          {% for dup in duplicates %}
+            <div class="flag-row" id="flag-dup-{{ dup.project_key }}" style="display: flex; align-items: center; gap: 8px; color: #b45309; font-size: 0.9375rem; flex-wrap: wrap;">
+              <span>⚠</span>
+              <span>
+                1 duplicate submission flagged ({{ dup.team_name }} — <strong>{{ dup.project_key }}</strong> superseded by {{ dup.canonical_key }})
+              </span>
+              <form method="post" action="/organizer" style="display: inline; margin: 0;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="restore_duplicate">
+                <input type="hidden" name="project_id" value="{{ dup.project.pk }}">
+                <button type="submit" id="restore-btn-{{ dup.project_key }}" style="background: none; border: 1px solid #d97706; color: #b45309; padding: 1px 6px; font-size: 0.8125rem; border-radius: 4px; cursor: pointer;">
+                  [restore]
+                </button>
+              </form>
+            </div>
+          {% endfor %}
+
+          {% if not constant_judges and not thin_count and not duplicates %}
+            <div style="color: var(--text-secondary, #64748b); font-size: 0.875rem;">
+              No integrity flags detected.
+            </div>
+          {% endif %}
+
+        </div>
+      </div>
+
+      <!-- Section 4: Action Buttons -->
+      <div style="padding: var(--space-md) var(--space-lg); background: var(--bg-surface, #ffffff); display: flex; gap: var(--space-sm); align-items: center; flex-wrap: wrap;" id="section-actions">
+        <a href="/organizer/assignments" class="btn btn-secondary" id="btn-run-assignment-link" style="padding: 0.4rem 0.875rem; font-size: 0.875rem;">
+          [Run assignment]
+        </a>
+        <a href="/organizer/normalization" class="btn btn-secondary" id="btn-run-normalization-link" style="padding: 0.4rem 0.875rem; font-size: 0.875rem;">
+          [Run normalization]
+        </a>
+        <a href="/api/export.csv" class="btn btn-primary" id="btn-export-csv-link" style="padding: 0.4rem 0.875rem; font-size: 0.875rem;">
+          [Export CSV ▾]
+        </a>
+      </div>
+
+    </div>
+
+    <!-- Detailed Track Breakdown (Clean collapsible/table) -->
+    {% if under_covered_tracks %}
+      <div class="card" style="background: var(--bg-surface, #ffffff); border: 1px solid var(--border-subtle, #e2e8f0); border-radius: var(--radius-lg, 8px); padding: var(--space-lg); margin-bottom: var(--space-xl);" id="track-coverage-detail">
+        <h3 style="font-size: 1rem; font-weight: 600; margin: 0 0 var(--space-sm) 0;">Under-Covered Tracks Breakdown</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border-subtle, #e2e8f0); text-align: left;">
+              <th style="padding: 8px 12px;">Track</th>
+              <th style="padding: 8px 12px;">Deficit</th>
+              <th style="padding: 8px 12px;">Affected Projects</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in under_covered_tracks %}
+              <tr style="border-bottom: 1px solid var(--border-subtle, #e2e8f0);">
+                <td style="padding: 8px 12px; font-weight: 500;">{{ t.track.name }}</td>
+                <td style="padding: 8px 12px; color: #b45309; font-weight: 600;">-{{ t.short_count }} reviews</td>
+                <td style="padding: 8px 12px; color: var(--text-secondary, #64748b);">{{ t.projects|join:", " }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
