@@ -16,6 +16,11 @@ RUN pip install --no-index --find-links=/wheels -r requirements.txt \
 COPY src/ /app/src/
 COPY run.py fixtures.json /app/
 COPY entrypoint.sh /app/
+RUN cd /app/src && \
+    DJANGO_SECRET_KEY=build-only-secret \
+    DJANGO_DEBUG=false \
+    DATABASE_URL=sqlite:////tmp/collectstatic.sqlite3 \
+    python manage.py collectstatic --noinput
 RUN chmod +x /app/entrypoint.sh && chown -R appuser /app
 USER appuser
 ENV PYTHONUNBUFFERED=1

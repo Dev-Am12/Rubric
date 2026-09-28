@@ -18,6 +18,22 @@ jobs:
         run: |
           timeout 60 sh -c 'until curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/projects | grep -qE "^[1-5][0-9][0-9]$"; do sleep 2; done'
 
+      - name: UI and static asset smoke
+        run: |
+          set -eu
+          for path in / /login /accounts/register /projects /static/css/rubric.css /static/js/htmx.min.js; do
+            code="$(curl -fsS -o /dev/null -w '%{http_code}' "http://localhost:8080$path")"
+            test "$code" = 200 || { echo "$path returned $code, expected 200"; exit 1; }
+          done
+          css_headers="$(mktemp)"
+          js_headers="$(mktemp)"
+          js_body="$(mktemp)"
+          curl -fsS -D "$css_headers" -o /dev/null http://localhost:8080/static/css/rubric.css
+          grep -Eiq '^Content-Type:[[:space:]]*text/css([;[:space:]]|$)' "$css_headers"
+          curl -fsS -D "$js_headers" -o "$js_body" http://localhost:8080/static/js/htmx.min.js
+          grep -Eiq '^Content-Type:[[:space:]]*(text|application)/javascript([;[:space:]]|$)' "$js_headers"
+          test -s "$js_body"
+
       - name: Run acceptance checker
         run: python3 run.py .dogfood.toml > acceptance-report.txt
 
@@ -73,3 +89,76 @@ jobs:
           DATABASE_URL: 'postgresql://rubric:rubric_dev_only@localhost:5432/rubric'
         run: |
           python -m django test tests --settings=rubric.settings_test
+
+  static-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Reject external template/CSS resources
+        run: python3 scripts/check_no_external_assets.py
+
+  offline-check:
+    runs-on: ubuntu-latest
+    needs: clean-room
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python for the acceptance checker
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download online acceptance report
+        uses: actions/download-artifact@v4
+        with:
+          name: acceptance-report
+          path: online-report
+
+      - name: Build and pull all images while online
+        run: |
+          docker compose build web
+          docker compose pull db
+
+      - name: Create stack and block container egress
+        id: egress
+        run: |
+          set -eu
+          docker compose create --no-build --pull never
+          web_id="$(docker compose ps -aq web)"
+          network_id="$(docker inspect "$web_id" --format '{{range .NetworkSettings.Networks}}{{.NetworkID}}{{end}}')"
+          subnet="$(docker network inspect "$network_id" --format '{{(index .IPAM.Config 0).Subnet}}')"
+          echo "Using compose subnet $subnet"
+          sudo iptables -w -N RUBRIC-OFFLINE-EGRESS
+          sudo iptables -w -I DOCKER-USER -s "$subnet" -j RUBRIC-OFFLINE-EGRESS
+          sudo iptables -w -A RUBRIC-OFFLINE-EGRESS -d 10.0.0.0/8 -j RETURN
+          sudo iptables -w -A RUBRIC-OFFLINE-EGRESS -d 172.16.0.0/12 -j RETURN
+          sudo iptables -w -A RUBRIC-OFFLINE-EGRESS -d 192.168.0.0/16 -j RETURN
+          sudo iptables -w -A RUBRIC-OFFLINE-EGRESS -j DROP
+          docker compose up -d --no-build --pull never
+
+      - name: Prove outbound egress is blocked, then run acceptance offline
+        run: |
+          set -eu
+          if docker compose exec -T web python -c "import socket; s=socket.socket(); s.settimeout(4); s.connect(('1.1.1.1',443))"; then
+            echo 'CONTROL FAILED: public TCP connection succeeded'
+            exit 1
+          fi
+          drop_count="$(sudo iptables -w -nvxL RUBRIC-OFFLINE-EGRESS | awk '$3 == "DROP" { n += $1 } END { print n + 0 }')"
+          test "$drop_count" -gt 0 || { echo 'CONTROL FAILED: no packet hit the egress DROP rule'; exit 1; }
+          echo "Egress control passed: public TCP connection failed and DROP counter is $drop_count"
+          timeout 60 sh -c 'until curl -fsS -o /dev/null http://localhost:8080/; do sleep 2; done'
+          python3 run.py .dogfood.toml > offline-report.txt
+          cat offline-report.txt
+          diff -u online-report/acceptance-report.txt offline-report.txt
+
+      - name: Stop offline stack
+        if: always()
+        run: docker compose down -v

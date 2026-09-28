@@ -20,7 +20,6 @@ services:
         condition: service_healthy
     ports:
       - "8080:8080"
-      - "8000:8080"
     environment:
       DATABASE_URL: postgres://rubric:rubric_dev_only@db:5432/rubric
       DJANGO_SECRET_KEY: dev-only-not-for-production

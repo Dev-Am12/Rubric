@@ -1,5 +1,5 @@
 [portal]
-base_url = "http://localhost:8000"
+base_url = "http://localhost:8080"
 
 [auth]
 organizer = "Authorization: Bearer rubric_seed_organizer_tok_9f8e7d6c5b4a"

@@ -22,6 +22,8 @@ that says so explicitly, so the history stays honest.
 - [12. The audit chain is tamper-evident, not proof against a database owner](#12-the-audit-chain-is-tamper-evident-not-proof-against-a-database-owner)
 - [13. Rubric editing after scoring begins: weight adjustments are permitted, criterion deletion is forbidden](#13-rubric-editing-after-scoring-begins-weight-adjustments-are-permitted-criterion-deletion-is-forbidden)
 - [14. Session cookie Secure flag is opt-in for local container adoptability](#14-session-cookie-secure-flag-is-opt-in-for-local-container-adoptability)
+- [15. Single active event model with explicit organizer switching](#15-single-active-event-model-with-explicit-organizer-switching)
+- [16. Offline CI evidence blocks container egress and checks the block](#16-offline-ci-evidence-blocks-container-egress-and-checks-the-block)
 
 ---
 
@@ -178,3 +180,12 @@ To ensure safety against accidental disruption, event creation explicitly leaves
 
 **In plain terms:** Only one event is active across the platform at a time. Creating a new event does not automatically make it live; an organizer must explicitly switch to it with a warning. This keeps URLs simple, ensures everyone sees the same event, and prevents data from leaking between hackathons.
 
+---
+
+## 16. Offline CI evidence blocks container egress and checks the block
+
+**Decision:** The offline acceptance check builds and pulls the images while online, then applies a host firewall rule to drop public egress from the Compose subnet. Its control case attempts an outbound TCP connection from the web container and requires both the connection to fail and the firewall's DROP counter to increase before comparing the offline report with the online report.
+
+**Rationale:** Detaching a container from Docker's default bridge does not prove that it cannot reach the network; another attached network or a runtime path could still provide egress. The check must observe the actual boundary it claims to verify. The control request and matching firewall counter make a blocked request distinguishable from an offline report that happened to match for unrelated reasons. This evidence assumes the GitHub-hosted Ubuntu runner's Docker bridge traffic passes through the IPv4 `DOCKER-USER` chain; the job fails if that chain or counter is unavailable.
+
+**In plain terms:** CI downloads everything first, then blocks the app container's public network traffic and proves a request hit that block before saying the app ran offline.
