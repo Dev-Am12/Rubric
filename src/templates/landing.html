@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {% if event %}{{ event.name }} — Rubric{% else %}Rubric — Hackathon Evaluation Portal{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="landing-container" style="max-width: 1040px; margin: 0 auto; padding: 2rem 1rem;">
+  <!-- Hero Section -->
+  <section class="hero-card" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(147, 51, 234, 0.05) 100%); border: 1px solid rgba(226, 232, 240, 0.8); border-radius: 1rem; padding: 2.5rem 2rem; margin-bottom: 2.5rem; text-align: center;">
+    <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 9999px; padding: 0.25rem 0.875rem; margin-bottom: 1.25rem; font-size: 0.8125rem; font-weight: 600; color: #475569;">
+      <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: {% if submissions_open %}#10b981{% else %}#94a3b8{% endif %};"></span>
+      Active Event &bull; {% if event %}{{ event.name }}{% else %}No Active Event{% endif %}
+    </div>
+
+    <h1 style="font-size: 2.5rem; font-weight: 800; letter-spacing: -0.025em; color: #0f172a; margin: 0 0 1rem 0; line-height: 1.2;">
+      {% if event %}
+        {{ event.name }}
+      {% else %}
+        Welcome to Rubric
+      {% endif %}
+    </h1>
+
+    <p style="font-size: 1.125rem; color: #64748b; max-width: 680px; margin: 0 auto 2rem auto; line-height: 1.6;">
+      Cryptographic append-only audit logging, empirical-Bayes shrinkage normalization, and provable judge score isolation for high-stakes hackathons.
+    </p>
+
+    <!-- Call to Actions -->
+    <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+      <a href="/projects" id="hero-gallery-btn" class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600;">
+        Browse Gallery &rarr;
+      </a>
+      {% if not actor or actor.is_anonymous %}
+        <a href="/accounts/register" id="hero-register-btn" class="btn btn-secondary" style="padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600;">
+          Create Account
+        </a>
+        <a href="/login" id="hero-login-btn" class="btn btn-secondary" style="padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600;">
+          Sign In
+        </a>
+      {% else %}
+        {% if submissions_open %}
+          <a href="/projects/new" id="hero-submit-btn" class="btn btn-secondary" style="padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600;">
+            Submit Project
+          </a>
+        {% endif %}
+        <a href="/my/submissions" id="hero-my-subs-btn" class="btn btn-secondary" style="padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600;">
+          My Submissions
+        </a>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if event %}
+  <!-- Event Timeline and Status Grid -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem;">
+    <!-- Submissions Status Box -->
+    <div class="card" style="border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 1.5rem; background: #ffffff;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="font-size: 1rem; font-weight: 700; color: #1e293b; margin: 0;">Submissions</h3>
+        <span class="badge" style="padding: 0.25rem 0.625rem; font-size: 0.75rem; font-weight: 700; border-radius: 9999px; background: {% if submissions_open %}#dcfce7; color: #15803d;{% elif submissions_status == 'Closed' %}#fee2e2; color: #b91c1c;{% else %}#f1f5f9; color: #475569;{% endif %}">
+          {{ submissions_status|upper }}
+        </span>
+      </div>
+      <div style="font-size: 0.875rem; color: #64748b; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div>
+          <span style="font-weight: 600; color: #334155;">Opens:</span>
+          <span>{% if event.submissions_open_at %}{{ event.submissions_open_at|date:"M j, Y, H:i e" }}{% else %}Not specified{% endif %}</span>
+        </div>
+        <div>
+          <span style="font-weight: 600; color: #334155;">Deadline:</span>
+          <span style="color: #0f172a; font-weight: 600;">{{ event.submissions_close_at|date:"M j, Y, H:i e" }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Voting Status Box -->
+    <div class="card" style="border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 1.5rem; background: #ffffff;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="font-size: 1rem; font-weight: 700; color: #1e293b; margin: 0;">Community Voting</h3>
+        <span class="badge" style="padding: 0.25rem 0.625rem; font-size: 0.75rem; font-weight: 700; border-radius: 9999px; background: {% if voting_open %}#dcfce7; color: #15803d;{% elif voting_status == 'Closed' %}#fee2e2; color: #b91c1c;{% else %}#f1f5f9; color: #475569;{% endif %}">
+          {{ voting_status|upper }}
+        </span>
+      </div>
+      <div style="font-size: 0.875rem; color: #64748b; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div>
+          <span style="font-weight: 600; color: #334155;">Opens:</span>
+          <span>{% if event.voting_opens_at %}{{ event.voting_opens_at|date:"M j, Y, H:i e" }}{% else %}Not scheduled{% endif %}</span>
+        </div>
+        <div>
+          <span style="font-weight: 600; color: #334155;">Closes:</span>
+          <span>{% if event.voting_closes_at %}{{ event.voting_closes_at|date:"M j, Y, H:i e" }}{% else %}Not scheduled{% endif %}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tracks Section -->
+  <section style="margin-bottom: 2.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+      <h2 style="font-size: 1.25rem; font-weight: 700; color: #0f172a; margin: 0;">Competition Tracks ({{ tracks|length }})</h2>
+    </div>
+    {% if tracks %}
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem;">
+        {% for track in tracks %}
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1.25rem;">
+            <div style="font-weight: 600; font-size: 1rem; color: #1e293b; margin-bottom: 0.25rem;">{{ track.name }}</div>
+            {% if track.external_id %}
+              <div style="font-size: 0.75rem; font-family: monospace; color: #94a3b8;">{{ track.external_id }}</div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p style="color: #64748b; font-style: italic;">No tracks configured yet for this event.</p>
+    {% endif %}
+  </section>
+
+  <!-- Prizes Section -->
+  <section style="margin-bottom: 2.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+      <h2 style="font-size: 1.25rem; font-weight: 700; color: #0f172a; margin: 0;">Prizes & Awards ({{ prizes|length }})</h2>
+    </div>
+    {% if prizes %}
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+        {% for prize in prizes %}
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1.25rem;">
+            <div style="font-weight: 700; font-size: 1.0625rem; color: #2563eb; margin-bottom: 0.5rem;">{{ prize.rank_label }}</div>
+            <p style="font-size: 0.875rem; color: #475569; margin: 0; line-height: 1.5;">
+              {% if prize.description %}{{ prize.description }}{% else %}Awarded per rubric ranking.{% endif %}
+            </p>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p style="color: #64748b; font-style: italic;">No prizes configured yet for this event.</p>
+    {% endif %}
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

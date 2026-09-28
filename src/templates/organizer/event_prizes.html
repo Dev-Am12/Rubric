@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Prizes — {{ event.name }} — Rubric{% endblock %}
+
+{% block content %}
+<div class="organizer-container" style="max-width: 900px; margin: 0 auto; padding: 2rem 1rem;">
+  <div style="margin-bottom: 2rem;">
+    <a href="/organizer/events" style="font-size: 0.875rem; color: #64748b; text-decoration: none;">&larr; Back to Events</a>
+    <h1 style="font-size: 1.875rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0 0.25rem 0;">Prizes: {{ event.name }}</h1>
+    <p style="color: #64748b; margin: 0;">Configure prize categories and descriptions for {{ event.name }}.</p>
+  </div>
+
+  {% if error_message %}
+    <div style="background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 1rem 1.25rem; border-radius: 0.5rem; margin-bottom: 1.5rem; font-size: 0.9375rem;">
+      {{ error_message }}
+    </div>
+  {% endif %}
+
+  <!-- Existing Prizes List -->
+  <div class="card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0.75rem; overflow: hidden; margin-bottom: 2.5rem;">
+    <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+      <h2 style="font-size: 1.125rem; font-weight: 700; color: #1e293b; margin: 0;">Configured Prizes ({{ prizes|length }})</h2>
+    </div>
+
+    {% if prizes %}
+      <div style="padding: 1rem 1.5rem;">
+        {% for prize in prizes %}
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 1rem 0; border-bottom: 1px solid #f1f5f9;">
+            <div>
+              <div style="font-weight: 700; color: #2563eb; font-size: 1.0625rem; margin-bottom: 0.25rem;">{{ prize.rank_label }}</div>
+              <div style="font-size: 0.875rem; color: #475569;">{{ prize.description|default:"No description." }}</div>
+            </div>
+            <div>
+              <details style="display: inline-block;">
+                <summary class="btn btn-secondary" style="padding: 0.25rem 0.625rem; font-size: 0.8125rem; cursor: pointer;">Edit</summary>
+                <form method="post" action="/organizer/events/{{ event.id }}/prizes/{{ prize.id }}" style="margin-top: 0.5rem; padding: 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.375rem; display: flex; flex-direction: column; gap: 0.5rem; min-width: 260px;">
+                  {% csrf_token %}
+                  <input type="text" name="rank_label" value="{{ prize.rank_label }}" required placeholder="Rank / Title"
+                         style="padding: 0.25rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 0.25rem; font-size: 0.8125rem;">
+                  <textarea name="description" placeholder="Description" rows="2"
+                            style="padding: 0.25rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 0.25rem; font-size: 0.8125rem;">{{ prize.description }}</textarea>
+                  <button type="submit" class="btn btn-primary" style="padding: 0.25rem 0.625rem; font-size: 0.8125rem; align-self: flex-start;">Save</button>
+                </form>
+              </details>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="padding: 2rem; text-align: center; color: #64748b; font-style: italic;">
+        No prizes have been configured yet.
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Add New Prize Form -->
+  <div class="card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 2rem;">
+    <h2 style="font-size: 1.25rem; font-weight: 700; color: #0f172a; margin: 0 0 1rem 0;">Add New Prize</h2>
+
+    <form method="post" action="/organizer/events/{{ event.id }}/prizes">
+      {% csrf_token %}
+      <div style="margin-bottom: 1.25rem;">
+        <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 0.375rem;">Rank Label / Title *</label>
+        <input type="text" name="rank_label" required placeholder="e.g. 1st Place Overall"
+               style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.375rem; font-size: 0.875rem;">
+      </div>
+      <div style="margin-bottom: 1.25rem;">
+        <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 0.375rem;">Description</label>
+        <textarea name="description" rows="3" placeholder="Prize description and criteria..."
+                  style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.375rem; font-size: 0.875rem;"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600;">
+        + Add Prize
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -218,8 +218,8 @@ def get_rubric(actor, event=None):
     """Get or create the default rubric for the event."""
     target_event = event or getattr(actor, 'event', None)
     if target_event is None:
-        from events.models import Event
-        target_event = Event.objects.first()
+        from events.services import current_event
+        target_event = current_event()
     if target_event is None:
         return None
     from judging.models import Rubric
@@ -244,8 +244,8 @@ def configure_rubric(actor, criteria):
 
     target_event = getattr(actor, 'event', None)
     if target_event is None:
-        from events.models import Event
-        target_event = Event.objects.first()
+        from events.services import current_event
+        target_event = current_event()
     if target_event is None:
         raise ValueError("An event is required to configure a rubric.")
 

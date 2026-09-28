@@ -21,6 +21,7 @@ that says so explicitly, so the history stays honest.
 - [11. Normalization claims are corrected against measured fixture behavior](#11-normalization-claims-are-corrected-against-measured-fixture-behavior)
 - [12. The audit chain is tamper-evident, not proof against a database owner](#12-the-audit-chain-is-tamper-evident-not-proof-against-a-database-owner)
 - [13. Rubric editing after scoring begins: weight adjustments are permitted, criterion deletion is forbidden](#13-rubric-editing-after-scoring-begins-weight-adjustments-are-permitted-criterion-deletion-is-forbidden)
+- [14. Session cookie Secure flag is opt-in for local container adoptability](#14-session-cookie-secure-flag-is-opt-in-for-local-container-adoptability)
 
 ---
 
@@ -151,3 +152,29 @@ that says so explicitly, so the history stays honest.
 **Rationale:** In live hackathons, organizers occasionally discover that a criterion was misweighted (e.g., "technical execution" should count 50% rather than 20% compared to "presentation"). Forbidding all rubric edits mid-event would force organizers to invalidate every existing evaluation or abandon weighted scoring entirely. Conversely, allowing criteria deletion would orphan existing `BallotScore` observations, destroying historical judge inputs and invalidating the statistical integrity of earlier evaluations. Permitting weight modifications preserves all raw score observations $s_{ijk}$ while allowing deterministic recalculation of $y_{ij} = \frac{\sum_k w_k s_{ijk}}{\sum_k w_k}$. The integrity trade-off is made transparent through three defenses: (1) deletion protection prevents data loss, (2) the tamper-evident audit log records exact before/after weight values and the organizer actor, and (3) normalization run history and the dashboard explicitly show the recalculation, preventing covert outcome manipulation.
 
 **In plain terms:** Once judges start scoring, you can't delete a criterion and throw away their work, but you can adjust how much each criterion is weighted. Every change is logged with before-and-after numbers, and normalization has to be re-run so the leaderboard stays honest.
+
+---
+
+## 14. Session cookie Secure flag is opt-in for local container adoptability
+
+**Decision:** The session cookie `Secure` attribute is controlled by an explicit environment variable (`RUBRIC_COOKIE_SECURE`, default `false`), rather than coupling it strictly to `DEBUG=False` or enabling it unconditionally. In the default configuration, session cookies are transmitted without the `Secure` flag so `docker compose` deployments running over plain HTTP on `http://localhost:8080` function seamlessly out of the box.
+
+**Rationale:** Modern web browsers increasingly enforce strict cookie handling. While modern browsers treat `http://localhost` as a secure context in some specifications, real-world containerized evaluations often access the service via varying hostnames (e.g. `http://127.0.0.1:8080`, custom local dev domains, or reverse proxies without SSL termination). Setting `Secure=True` unconditionally or tying it to `DEBUG=False` causes browsers to quietly reject or drop the session cookie when testing production builds locally without TLS, breaking the core "one-command adoptability" requirement (`docker compose up`). Security in production is maintained by documenting `RUBRIC_COOKIE_SECURE=true` for deployment behind TLS-terminating proxies (e.g., Caddy, Traefik, or cloud ALBs).
+
+**In plain terms:** When evaluating locally with docker compose on plain HTTP, browsers drop `Secure` cookies, which breaks login. We default `Secure` to off so the one-command setup works instantly without requiring local TLS certificates, and enable it with an environment variable when running in production.
+
+---
+
+## 15. Single active event model with explicit organizer switching
+
+**Decision:** The platform operates under a single active event model at any given time, enforced by a partial unique constraint on `Event.is_current` (`condition=Q(is_current=True)`). Event creation never automatically activates or switches the active event. Switching the active event is an explicit, privileged organizer action that updates `is_current` within an atomic transaction and records before-and-after state in the tamper-evident audit log. All public, judging, and organizer views (gallery, judge queues, dashboard, rubric, export) are strictly scoped to the active event.
+
+**Rationale:** Multiple architectural models were evaluated for multi-event support:
+1. *URL-prefix scoping (`/e/<slug>/...`)*: Requires restructuring all canonical routes, complicates bookmarks, makes participant and judge onboarding error-prone (entering the wrong slug mixes contexts), and breaks API stability guarantees for external consumers.
+2. *Session-scoped event switching*: Storing the active event in the user's session cookie leads to split-brain states where two organizers or judges in the same deployment see different datasets, creating silent confusion and data desynchronization.
+3. *Single database-level active event (`is_current`)*: Keeps canonical URLs permanent and clean (`/`, `/projects`, `/judge/queue`, `/organizer`), guarantees that all participants, judges, and organizers share the exact same ground truth, and completely eliminates cross-event data leakage.
+
+To ensure safety against accidental disruption, event creation explicitly leaves `is_current=False`. Switching to a new event requires a dedicated POST action with an explicit warning explaining that it re-scopes what the entire portal displays. Database integrity is guaranteed at the storage level via a partial unique index, making it impossible for concurrent requests or application bugs to mark multiple events as current simultaneously.
+
+**In plain terms:** Only one event is active across the platform at a time. Creating a new event does not automatically make it live; an organizer must explicitly switch to it with a warning. This keeps URLs simple, ensures everyone sees the same event, and prevents data from leaking between hackathons.
+

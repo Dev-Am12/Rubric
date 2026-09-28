@@ -10,9 +10,26 @@ Design reference:
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
 
 from services import accounts as accounts_service
+
+
+def _get_cookie_secure():
+    return getattr(settings, "RUBRIC_COOKIE_SECURE", False)
+
+
+def _sanitize_next_url(request, next_url, default="/projects"):
+    if not next_url:
+        return default
+    if url_has_allowed_host_and_scheme(
+        url=next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return next_url
+    return default
 
 
 @require_http_methods(["GET", "POST"])
@@ -33,14 +50,15 @@ def register_view(request):
                 password=password,
                 display_name=display_name,
             )
-            next_url = request.POST.get("next") or request.GET.get("next") or "/projects"
+            raw_next = request.POST.get("next") or request.GET.get("next")
+            next_url = _sanitize_next_url(request, raw_next, default="/projects")
             response = HttpResponseRedirect(next_url)
             response.set_cookie(
                 "session",
                 raw_token,
                 httponly=True,
                 samesite="Lax",
-                secure=not settings.DEBUG,
+                secure=_get_cookie_secure(),
             )
             return response
         except ValueError as exc:
@@ -68,8 +86,10 @@ def login_view(request):
 
         try:
             user, raw_token = accounts_service.login(email=email, password=password)
-            next_url = request.POST.get("next") or request.GET.get("next")
-            if not next_url:
+            raw_next = request.POST.get("next") or request.GET.get("next")
+            if raw_next:
+                next_url = _sanitize_next_url(request, raw_next, default="/projects")
+            else:
                 if user.is_site_admin or user.event_memberships.filter(role="ORGANIZER").exists():
                     next_url = "/organizer"
                 else:
@@ -81,7 +101,7 @@ def login_view(request):
                 raw_token,
                 httponly=True,
                 samesite="Lax",
-                secure=not settings.DEBUG,
+                secure=_get_cookie_secure(),
             )
             return response
         except ValueError:

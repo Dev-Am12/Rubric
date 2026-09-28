@@ -255,3 +255,71 @@ accounts_logout:
   note: >
     Canonical /accounts/logout alias for user logout.
 
+# -----------------------------------------------------------------------
+# G5.7 Event management & public landing page routes
+# -----------------------------------------------------------------------
+landing_page:
+  declared: true
+  path: /
+  method: GET
+  auth: public
+  note: >
+    Public landing page showing current event details, tracks, prizes, and portal links.
+
+organizer_events:
+  declared: true
+  path: /organizer/events
+  method: GET, POST
+  auth: organizer
+  note: >
+    Organizer event management dashboard: list all events and create new events.
+
+organizer_event_dates:
+  declared: true
+  path: /organizer/events/{event_id}/dates
+  method: GET, POST
+  auth: organizer
+  note: >
+    Organizer interface to edit event name, slug, and submission/voting dates.
+
+organizer_event_tracks:
+  declared: true
+  path: /organizer/events/{event_id}/tracks
+  method: GET, POST
+  auth: organizer
+  note: >
+    Organizer interface to list and add tracks for an event.
+
+organizer_event_track_edit:
+  declared: true
+  path: /organizer/events/{event_id}/tracks/{track_id}
+  method: POST
+  auth: organizer
+  note: >
+    Organizer endpoint to edit track details.
+
+organizer_event_prizes:
+  declared: true
+  path: /organizer/events/{event_id}/prizes
+  method: GET, POST
+  auth: organizer
+  note: >
+    Organizer interface to list and add prizes for an event.
+
+organizer_event_prize_edit:
+  declared: true
+  path: /organizer/events/{event_id}/prizes/{prize_id}
+  method: POST
+  auth: organizer
+  note: >
+    Organizer endpoint to edit prize details.
+
+organizer_event_make_current:
+  declared: true
+  path: /organizer/events/{event_id}/make-current
+  method: POST
+  auth: organizer
+  note: >
+    Organizer action to explicitly switch the active/current event across the portal.
+
+

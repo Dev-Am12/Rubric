@@ -30,6 +30,7 @@ from django.utils import timezone
 from accounts.actors import Actor, AnonymousActor, PermissionDenied
 from accounts.models import AuthToken, EventMembership
 from events.models import Event
+from events.services import current_event
 
 
 class AuthMiddleware:
@@ -104,10 +105,8 @@ class AuthMiddleware:
 
         user = auth_token.user
 
-        # Resolve the current event.
-        # For now, we use the first (and likely only) event in the system.
-        # In a multi-event system, this would be extracted from the URL.
-        event = Event.objects.first()
+        # Resolve the current event using the single active event model.
+        event = current_event()
         if event is None:
             # No event exists yet — authenticated but no event context
             return Actor(user=user, event=None), auth_source

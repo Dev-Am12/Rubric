@@ -143,6 +143,8 @@ class Command(BaseCommand):
             },
         )
 
+        # Ensure no other event violates the unique partial constraint before marking current
+        Event.objects.exclude(external_id=evt_id).filter(is_current=True).update(is_current=False)
         event, created = Event.objects.update_or_create(
             external_id=evt_id,
             defaults={
@@ -150,6 +152,7 @@ class Command(BaseCommand):
                 'slug': slug,
                 'submissions_close_at': submissions_close_at,
                 'created_by': organizer_user,
+                'is_current': True,
             },
         )
         action = 'created' if created else 'updated'

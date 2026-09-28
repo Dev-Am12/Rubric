@@ -434,10 +434,19 @@ def gallery(actor, q=None, track=None, tag=None):
     are excluded). No pagination yet (deferred, cheap to add later, not
     needed at fixture scale of 41 projects).
     """
+    target_event = getattr(actor, 'event', None)
+    if target_event is None:
+        from events.services import current_event
+        target_event = current_event()
+
     qs = Project.objects.filter(
         status=ProjectStatus.SUBMITTED,
         is_duplicate_of__isnull=True,
-    ).select_related('team', 'track', 'event').order_by('-submitted_at')
+    )
+    if target_event is not None:
+        qs = qs.filter(event=target_event)
+
+    qs = qs.select_related('team', 'track', 'event').order_by('-submitted_at')
 
     if q:
         qs = qs.filter(title__icontains=q)

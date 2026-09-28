@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from accounts.models import AuthToken, EventMembership, EventRole, User
 from events.models import Event
+from events.services import current_event
 from services import audit
 
 
@@ -43,7 +44,7 @@ def register(email, password, display_name="", event=None):
             display_name=display_name,
         )
 
-        target_event = event or Event.objects.first()
+        target_event = event or current_event()
         if target_event is not None:
             EventMembership.objects.get_or_create(
                 user=user,

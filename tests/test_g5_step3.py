@@ -355,9 +355,9 @@ class G5Step3UserAccountsTests(TestCase):
 
         self.assertEqual(normalize_csrf(res_wrong_pw.content), normalize_csrf(res_same_email.content))
 
-    @override_settings(DEBUG=False)
-    def test_session_cookie_flags_debug_false(self):
-        """When DEBUG=False, session cookie has HttpOnly, SameSite=Lax, and Secure=True."""
+    @override_settings(RUBRIC_COOKIE_SECURE=True)
+    def test_session_cookie_flags_secure_true(self):
+        """When RUBRIC_COOKIE_SECURE=True, session cookie has Secure=True."""
         email = "securecookie@example.org"
         password = "Password123!"
 
@@ -384,18 +384,86 @@ class G5Step3UserAccountsTests(TestCase):
         self.assertEqual(login_cookie['samesite'].lower(), 'lax')
         self.assertTrue(login_cookie['secure'])
 
-    @override_settings(DEBUG=True)
-    def test_session_cookie_flags_debug_true(self):
-        """When DEBUG=True, Secure flag is False to facilitate local development."""
+    @override_settings(RUBRIC_COOKIE_SECURE=False)
+    def test_session_cookie_flags_secure_false(self):
+        """When RUBRIC_COOKIE_SECURE=False (default), Secure flag is False to facilitate local docker compose adoptability."""
+        email = "plaincookie@example.org"
+        password = "Password123!"
+
         res = self.client.post('/accounts/register', {
-            'email': 'debugcookie@example.org',
-            'password': 'Password123!',
+            'email': email,
+            'password': password,
+            'display_name': 'Plain User',
         })
         self.assertEqual(res.status_code, 302)
         cookie = res.cookies['session']
         self.assertTrue(cookie['httponly'])
         self.assertEqual(cookie['samesite'].lower(), 'lax')
         self.assertFalse(cookie['secure'])
+
+        res_login = self.client.post('/login', {
+            'email': email,
+            'password': password,
+        })
+        self.assertEqual(res_login.status_code, 302)
+        login_cookie = res_login.cookies['session']
+        self.assertTrue(login_cookie['httponly'])
+        self.assertEqual(login_cookie['samesite'].lower(), 'lax')
+        self.assertFalse(login_cookie['secure'])
+
+    def test_open_redirect_protection(self):
+        """
+        Open redirect protection: next parameter is validated with url_has_allowed_host_and_scheme;
+        disallowed targets fall back to /projects.
+        Tests: https://evil.com, //evil.com, javascript:alert(1), and a legitimate relative path.
+        """
+        # Register a test user
+        user, _ = accounts_service.register(
+            email="redirect_tester@example.org",
+            password="Password123!",
+            display_name="Redirect Tester",
+        )
+
+        bad_targets = ['https://evil.com', '//evil.com', 'javascript:alert(1)']
+
+        # Test login open redirect
+        for bad in bad_targets:
+            res = self.client.post('/login', {
+                'email': 'redirect_tester@example.org',
+                'password': 'Password123!',
+                'next': bad,
+            })
+            self.assertEqual(res.status_code, 302)
+            self.assertEqual(res.url, '/projects', f"Login must not redirect to malicious target {bad}")
+
+        # Legitimate relative path
+        res_legit = self.client.post('/login', {
+            'email': 'redirect_tester@example.org',
+            'password': 'Password123!',
+            'next': '/my/submissions',
+        })
+        self.assertEqual(res_legit.status_code, 302)
+        self.assertEqual(res_legit.url, '/my/submissions')
+
+        # Test register open redirect
+        for idx, bad in enumerate(bad_targets):
+            res = self.client.post('/accounts/register', {
+                'email': f'new_reg_{idx}@example.org',
+                'password': 'Password123!',
+                'display_name': f'New Reg {idx}',
+                'next': bad,
+            })
+            self.assertEqual(res.status_code, 302)
+            self.assertEqual(res.url, '/projects', f"Register must not redirect to malicious target {bad}")
+
+        res_reg_legit = self.client.post('/accounts/register', {
+            'email': 'new_reg_legit@example.org',
+            'password': 'Password123!',
+            'display_name': 'Legit Reg',
+            'next': '/my/submissions',
+        })
+        self.assertEqual(res_reg_legit.status_code, 302)
+        self.assertEqual(res_reg_legit.url, '/my/submissions')
 
     def test_cookie_authenticated_post_without_csrf_is_rejected(self):
         """

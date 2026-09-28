@@ -10,6 +10,7 @@ class Event(models.Model):
     submissions_close_at = models.DateTimeField()
     voting_opens_at = models.DateTimeField(null=True, blank=True)
     voting_closes_at = models.DateTimeField(null=True, blank=True)
+    is_current = models.BooleanField(default=False)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -20,6 +21,13 @@ class Event(models.Model):
 
     class Meta:
         db_table = 'events_event'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['is_current'],
+                condition=models.Q(is_current=True),
+                name='unique_current_event',
+            )
+        ]
 
     def __str__(self):
         return self.name

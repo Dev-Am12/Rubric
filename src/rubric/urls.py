@@ -31,6 +31,16 @@ from judging.views_organizer import (
     organizer_audit_log_page_view,
     organizer_rubric_view,
 )
+from events.views import landing_page_view
+from events.views_organizer import (
+    organizer_events_view,
+    organizer_event_dates_view,
+    organizer_event_tracks_view,
+    organizer_event_track_edit_view,
+    organizer_event_prizes_view,
+    organizer_event_prize_edit_view,
+    organizer_event_make_current_view,
+)
 from submissions.views import (
     gallery_view,
     submit_view,
@@ -41,6 +51,11 @@ from submissions.views import (
 
 # Admin is intentionally not shipped (PLAN.md P-08)
 urlpatterns = [
+    # -----------------------------------------------------------------------
+    # Public Landing Page (UX.md §1)
+    # -----------------------------------------------------------------------
+    path('', landing_page_view, name='landing_page'),
+
     # -----------------------------------------------------------------------
     # Judging & Organizer UI routes (UX.md §1, §2, §3)
     # -----------------------------------------------------------------------
@@ -53,6 +68,13 @@ urlpatterns = [
     path('organizer/progress', organizer_progress_page_view, name='organizer_progress_page'),
     path('organizer/audit-log', organizer_audit_log_page_view, name='organizer_audit_log_page'),
     path('organizer/rubric', organizer_rubric_view, name='organizer_rubric'),
+    path('organizer/events', organizer_events_view, name='organizer_events'),
+    path('organizer/events/<int:event_id>/dates', organizer_event_dates_view, name='organizer_event_dates'),
+    path('organizer/events/<int:event_id>/tracks', organizer_event_tracks_view, name='organizer_event_tracks'),
+    path('organizer/events/<int:event_id>/tracks/<int:track_id>', organizer_event_track_edit_view, name='organizer_event_track_edit'),
+    path('organizer/events/<int:event_id>/prizes', organizer_event_prizes_view, name='organizer_event_prizes'),
+    path('organizer/events/<int:event_id>/prizes/<int:prize_id>', organizer_event_prize_edit_view, name='organizer_event_prize_edit'),
+    path('organizer/events/<int:event_id>/make-current', organizer_event_make_current_view, name='organizer_event_make_current'),
 
     # -----------------------------------------------------------------------
     # Accounts UI routes (UX.md §1, API.md §3)

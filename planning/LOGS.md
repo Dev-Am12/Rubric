@@ -257,3 +257,72 @@ un.py T1/T2 check. Temporary database and server log files were removed afterwar
   - Audit Log: cryptographic ledger mechanics, tamper-evidence capabilities, offline verifiability, and clear boundaries regarding database administrator threat models (Decision 12).
   - Outlined clearly marked TODO section for the T3 public voting threat model to be implemented in G6.
 - Full local test suite passes cleanly: 170 tests passing across the repository.
+
+## 2026-09-28 — G5 close-out: verification fixes, Postgres test parity, and cookie security
+
+- Resolved red PostgreSQL CI job causes:
+  - Immutability trigger test separation: split raw SQL tamper test into:
+    1. A PostgreSQL-only test (`test_postgres_immutability_trigger_rejects_raw_mutations`, decorated with `unittest.skipUnless(connection.vendor == 'postgresql')`) asserting that the database trigger actively rejects raw `UPDATE`, `DELETE`, and `TRUNCATE` statements with `'audit log entries are immutable'`.
+    2. A privileged attacker tamper-detection test (`test_raw_sql_tamper_detects_each_entry_at_its_sequence`): on PostgreSQL, executes `ALTER TABLE audit_auditlogentry DISABLE TRIGGER USER`, tampers with payloads via raw SQL, asserts `verify_chain` fails at the exact tampered sequence, and safely re-enables triggers in a `finally` block (`ENABLE TRIGGER USER`), skipping cleanly if database privileges are insufficient; on SQLite, tampers directly. Neither assertion was weakened.
+  - TransactionTestCase teardown flush resolution: added `AuditTransactionTestCase(TransactionTestCase)` as a shared base class for transaction test cases touching audit tables. On PostgreSQL, its `_fixture_teardown()` disables `audit_log_entry_no_truncate` before running `flush` and re-enables it in a `finally` block, preventing teardown flush aborts while keeping the production database trigger intact.
+- Open redirect validation (`src/accounts/views.py`):
+  - Sanitized `next` parameter in `register_view` and `login_view` using `django.utils.http.url_has_allowed_host_and_scheme(url=raw_next, allowed_hosts={request.get_host()}, require_https=request.is_secure())`, falling back to `/projects` for untrusted destinations.
+  - Added test coverage in `tests/test_g5_step3.py` verifying that malicious targets (`https://evil.com`, `//evil.com`, `javascript:alert(1)`) are rejected and redirected to `/projects`, while legitimate relative paths (`/my/submissions`) are honored for both login and registration.
+- Session cookie Secure flag configuration (`src/rubric/settings.py`, `src/accounts/views.py`):
+  - Replaced hard-coded `secure=not settings.DEBUG` with `RUBRIC_COOKIE_SECURE` environment setting (default `false`) so `docker compose` deployments running over plain HTTP on `http://localhost:8080` work out of the box without browsers rejecting session cookies.
+  - Documented the adoptability-vs-security trade-off in `DECISIONS.md` (Decision 14).
+  - Added tests in `tests/test_g5_step3.py` verifying `Secure=True` when `RUBRIC_COOKIE_SECURE=True` and `Secure=False` when `RUBRIC_COOKIE_SECURE=False`.
+- Audit pagination hardening (`src/api/views.py`, `src/judging/views_organizer.py`):
+  - Ensured `page` and `page_size` parameters `< 1` or non-numeric never trigger HTTP 500 errors.
+  - API endpoint (`/api/v1/organizer/audit-log`) returns HTTP 400 `{"error":"invalid_parameters","detail":...}` on invalid values.
+  - HTML viewer (`/organizer/audit-log`) clamps values to safe bounds (`page >= 1`, `1 <= page_size <= 200`, defaulting to `page=1, page_size=25`).
+  - Added boundary tests in `tests/test_g5_audit.py` covering `0`, negative values (`-5`, `-10`), non-numeric strings (`abc`, `xyz`), and huge integers (`999999999`).
+- Dogfood configuration (`.dogfood.toml`):
+  - Added pitch sentence under `[tiers]`: `"Rubric delivers an auditable hackathon evaluation portal featuring cryptographic append-only audit logging, empirical-Bayes shrinkage normalization, and provable judge score isolation."`.
+  - Maintained `claimed = []` unchanged per instructions.
+- Full test suite results:
+  - SQLite (default): 173 tests passed, 0 failures, 0 errors (1 skipped).
+  - PostgreSQL (`postgresql://rubric:rubric_dev_only@localhost:5432/rubric_dev`): 173 tests passed, 0 failures, 0 errors (0 skipped).
+
+## 2026-09-28 — G5.7: Event management, safe current-event model, landing page, and organizer bootstrap
+
+- Single active current event model (`src/events/models.py`, `src/events/migrations/0003_event_is_current.py`, `src/events/services.py`, `src/services/events.py`):
+  - Added `Event.is_current = models.BooleanField(default=False)`.
+  - Added partial unique constraint `models.UniqueConstraint(fields=['is_current'], condition=models.Q(is_current=True), name='unique_current_event')`, guaranteeing at most one active event at the database level across SQLite and PostgreSQL.
+  - Authored migration `0003_event_is_current` containing schema change and data migration marking the existing fixture event (`external_id='evt_01'`) current.
+  - Implemented `events.services.current_event()` with safe fallback for synthetic unit tests.
+  - Replaced all five `Event.objects.first()` sites (`src/accounts/middleware.py`, `src/services/judging.py` [x2], `src/submissions/views.py`, `src/accounts/services.py`) with `current_event()`.
+  - Updated `src/importer/management/commands/seed_fixtures.py` to clear any existing active flag and explicitly mark the fixture event current.
+  - Enforced that event creation (`create_event`) NEVER auto-switches `is_current`.
+  - Documented architectural rationale and trade-offs in `DECISIONS.md` (Decision 15).
+- Organizer event management routes & services (`src/events/views_organizer.py`, `src/events/services.py`, `src/rubric/urls.py`):
+  - Added organizer-only routes:
+    - `GET, POST /organizer/events`: list events, statuses, tracks/prizes counts, and event creation form.
+    - `GET, POST /organizer/events/<id>/dates`: edit event name, slug, and submission/voting open/close dates.
+    - `GET, POST /organizer/events/<id>/tracks`: list tracks and add tracks.
+    - `POST /organizer/events/<id>/tracks/<track_id>`: edit track name and external ID.
+    - `GET, POST /organizer/events/<id>/prizes`: list prizes and add prizes.
+    - `POST /organizer/events/<id>/prizes/<prize_id>`: edit prize rank label and description.
+    - `POST /organizer/events/<id>/make-current`: explicit event activation with confirmation warning explaining portal-wide re-scoping.
+  - Added service mutators with before/after audit recording: `update_event`, `set_current_event`, `update_track`, `update_prize`.
+  - Date validation: enforces `submissions_close_at > submissions_open_at` and `voting_closes_at > voting_opens_at`; rejects naive datetimes (`ValueError`).
+- Public landing page (`src/events/views.py`, `src/templates/landing.html`, `src/rubric/urls.py`):
+  - Route `GET /`: displays current event name, date schedule, submission status badge (`Open`, `Closed`, `Opens Soon`), voting status badge, list of tracks and prizes, and navigation links to the public project gallery (`/projects`), registration (`/accounts/register`), and login (`/login`).
+  - Updated `src/templates/base.html` navigation to link brand to `/`, and added `Events` and `Audit Log` links for organizers.
+- Organizer bootstrap management command (`src/accounts/management/commands/create_organizer.py`):
+  - Implemented `manage.py create_organizer --email <email> --password <password> --name <name>` to bootstrap site administrators in clean deployments.
+  - Creates user, sets password via Django hasher, grants `is_site_admin=True`, creates `EventMembership(role=ORGANIZER)` on the current event, and logs audit event `organizer.bootstrap`.
+- Test suite & verification (`tests/test_g5_step7.py`):
+  - Verified event isolation: creating a second event without switching leaves gallery, judge queue, dashboard, and CSV export for the fixture event identical; switching cleanly scopes all surfaces to the new event with zero cross-event leakage; switching back restores fixture scope.
+  - Verified partial unique constraint: attempting to persist multiple `is_current=True` events raises `IntegrityError`.
+  - Verified deadline enforcement: moving `submissions_close_at` into the past causes real submit path (`POST /projects/new` via HTML and JSON) to refuse with 403 Forbidden.
+  - Verified date validation: rejects naive datetimes and backwards dates with `ValueError`.
+  - Verified bootstrap command: user creation, password verification, permissions, audit entry, and credential login.
+  - Verified authz expectations: all new routes registered in `tests/authz_expectations.yaml` and verified with all six personas (anon, participant, judge_a, judge_b, judge_unassigned, organizer).
+- Acceptance checker:
+  - Executed `run.py .dogfood.toml` against live local server: all checks PASS (gallery public, fixture projects shown, closed event refuses submissions, judge score isolation, CSV export).
+- Full test suite results:
+  - SQLite: 189 tests passed, 0 failures, 0 errors (1 skipped).
+  - PostgreSQL: 189 tests passed, 0 failures, 0 errors (0 skipped).
+
+

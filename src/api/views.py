@@ -79,10 +79,11 @@ def organizer_audit_log_view(request):
     try:
         page = int(page)
         page_size = int(page_size)
-    except (ValueError, TypeError):
-        return JsonResponse({'error': 'invalid_parameters', 'detail': 'page and page_size must be integers'}, status=400)
-
-    data = audit_services.list(request.actor, page=page, page_size=page_size)
+        if page < 1 or page_size < 1:
+            raise ValueError('page and page_size must be positive integers')
+        data = audit_services.list(request.actor, page=page, page_size=page_size)
+    except (ValueError, TypeError) as exc:
+        return JsonResponse({'error': 'invalid_parameters', 'detail': str(exc)}, status=400)
     entries = []
     for entry in data['results']:
         entries.append({

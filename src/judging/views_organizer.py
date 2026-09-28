@@ -309,13 +309,15 @@ def organizer_audit_log_page_view(request):
     from audit.models import AuditChainHead
     from services import audit as audit_services
 
-    page = request.GET.get('page', 1)
-    page_size = request.GET.get('page_size', 25)
+    page_raw = request.GET.get('page', 1)
+    page_size_raw = request.GET.get('page_size', 25)
     try:
-        page = int(page)
-        page_size = int(page_size)
+        page = max(1, int(page_raw))
     except (ValueError, TypeError):
         page = 1
+    try:
+        page_size = max(1, min(int(page_size_raw), 200))
+    except (ValueError, TypeError):
         page_size = 25
 
     log_data = audit_services.list(request.actor, page=page, page_size=page_size)

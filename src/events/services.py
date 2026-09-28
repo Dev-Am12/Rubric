@@ -12,13 +12,54 @@ Views never touch the ORM directly for these entities — they call these
 service functions exclusively.
 """
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from django.utils import timezone
 from django.utils.text import slugify
 
 from accounts.actors import require, PermissionDenied
 from accounts.models import EventMembership, EventRole
 from events.models import Event, Track, Prize
+
+
+def current_event():
+    """
+    Return the single current active event, or None if no event exists.
+    Queries for the event with is_current=True. If no event is marked current
+    (e.g. in synthetic unit tests), falls back to Event.objects.first().
+    """
+    evt = Event.objects.filter(is_current=True).first()
+    if evt is not None:
+        return evt
+    return Event.objects.first()
+
+
+def _check_datetime(dt, field_name):
+    if dt is None:
+        return None
+    if isinstance(dt, str):
+        val = dt.strip()
+        if not val:
+            return None
+        if val.endswith('Z'):
+            val = val[:-1] + '+00:00'
+        try:
+            dt = datetime.fromisoformat(val)
+        except ValueError as exc:
+            raise ValueError(f"Invalid datetime format for {field_name}: {exc}")
+    if not isinstance(dt, datetime):
+        raise ValueError(f"{field_name} must be a datetime or ISO string.")
+    if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
+        raise ValueError(f"Naive datetimes are not allowed for {field_name}; datetimes must be timezone-aware.")
+    return dt
+
+
+def _validate_dates(submissions_open_at, submissions_close_at, voting_opens_at, voting_closes_at):
+    if submissions_open_at and submissions_close_at:
+        if submissions_close_at <= submissions_open_at:
+            raise ValueError("Submissions close date must be after submissions open date.")
+    if voting_opens_at and voting_closes_at:
+        if voting_closes_at <= voting_opens_at:
+            raise ValueError("Voting close date must be after voting open date.")
 
 
 def create_event(
@@ -37,6 +78,7 @@ def create_event(
 
     Enforces organizer role via require(). Sets created_by to the actor's
     user and automatically adds an ORGANIZER EventMembership for the user.
+    Creating an event NEVER auto-switches is_current.
     """
     require(actor, actor.is_organizer or actor.is_site_admin)
 
@@ -47,10 +89,20 @@ def create_event(
     elif name is None and slug is None:
         raise ValueError("Event name or slug is required.")
 
+    submissions_open_at = _check_datetime(submissions_open_at, 'submissions_open_at')
+    submissions_close_at = _check_datetime(submissions_close_at, 'submissions_close_at')
+    voting_opens_at = _check_datetime(voting_opens_at, 'voting_opens_at')
+    voting_closes_at = _check_datetime(voting_closes_at, 'voting_closes_at')
+
     if submissions_close_at is None:
         submissions_close_at = timezone.now() + timedelta(days=30)
 
+    _validate_dates(submissions_open_at, submissions_close_at, voting_opens_at, voting_closes_at)
+
     user = actor.user if not actor.is_anonymous else None
+
+    # Never auto-switch on creation
+    is_current = kwargs.pop('is_current', False)
 
     from django.db import transaction
     from services import audit
@@ -64,6 +116,7 @@ def create_event(
             voting_opens_at=voting_opens_at,
             voting_closes_at=voting_closes_at,
             external_id=external_id,
+            is_current=is_current,
             created_by=user,
             **kwargs,
         )
@@ -78,9 +131,122 @@ def create_event(
         audit.record(actor, 'event.create', event, {
             'slug': event.slug,
             'name': event.name,
+            'submissions_close_at': event.submissions_close_at.isoformat() if event.submissions_close_at else None,
+            'is_current': event.is_current,
         })
 
     return event
+
+
+def update_event(
+    actor,
+    event_or_id,
+    name=None,
+    slug=None,
+    submissions_open_at=...,
+    submissions_close_at=...,
+    voting_opens_at=...,
+    voting_closes_at=...,
+):
+    """
+    Update an event's name and dates. Organizer-only.
+    All changes are audit-logged with before/after state.
+    """
+    require(actor, actor.is_organizer or actor.is_site_admin)
+    if isinstance(event_or_id, Event):
+        event = event_or_id
+    elif isinstance(event_or_id, int):
+        event = Event.objects.get(pk=event_or_id)
+    else:
+        event = Event.objects.get(slug=str(event_or_id))
+
+    before = {
+        'name': event.name,
+        'slug': event.slug,
+        'submissions_open_at': event.submissions_open_at.isoformat() if event.submissions_open_at else None,
+        'submissions_close_at': event.submissions_close_at.isoformat() if event.submissions_close_at else None,
+        'voting_opens_at': event.voting_opens_at.isoformat() if event.voting_opens_at else None,
+        'voting_closes_at': event.voting_closes_at.isoformat() if event.voting_closes_at else None,
+    }
+
+    new_sub_open = event.submissions_open_at if submissions_open_at is Ellipsis else _check_datetime(submissions_open_at, 'submissions_open_at')
+    new_sub_close = event.submissions_close_at if submissions_close_at is Ellipsis else _check_datetime(submissions_close_at, 'submissions_close_at')
+    new_vote_open = event.voting_opens_at if voting_opens_at is Ellipsis else _check_datetime(voting_opens_at, 'voting_opens_at')
+    new_vote_close = event.voting_closes_at if voting_closes_at is Ellipsis else _check_datetime(voting_closes_at, 'voting_closes_at')
+
+    if new_sub_close is None:
+        raise ValueError("submissions_close_at cannot be None.")
+
+    _validate_dates(new_sub_open, new_sub_close, new_vote_open, new_vote_close)
+
+    from django.db import transaction
+    from services import audit
+
+    with transaction.atomic():
+        if name is not None:
+            event.name = name
+        if slug is not None:
+            event.slug = slug
+        if submissions_open_at is not Ellipsis:
+            event.submissions_open_at = new_sub_open
+        if submissions_close_at is not Ellipsis:
+            event.submissions_close_at = new_sub_close
+        if voting_opens_at is not Ellipsis:
+            event.voting_opens_at = new_vote_open
+        if voting_closes_at is not Ellipsis:
+            event.voting_closes_at = new_vote_close
+        event.save()
+
+        after = {
+            'name': event.name,
+            'slug': event.slug,
+            'submissions_open_at': event.submissions_open_at.isoformat() if event.submissions_open_at else None,
+            'submissions_close_at': event.submissions_close_at.isoformat() if event.submissions_close_at else None,
+            'voting_opens_at': event.voting_opens_at.isoformat() if event.voting_opens_at else None,
+            'voting_closes_at': event.voting_closes_at.isoformat() if event.voting_closes_at else None,
+        }
+
+        audit.record(actor, 'event.update', event, {
+            'before': before,
+            'after': after,
+        })
+
+    return event
+
+
+def set_current_event(actor, event_or_id):
+    """
+    Explicitly set an event as the single current event. Organizer-only.
+    All changes are audit-logged with before/after state.
+    """
+    require(actor, actor.is_organizer or actor.is_site_admin)
+    if isinstance(event_or_id, Event):
+        target = event_or_id
+    elif isinstance(event_or_id, int):
+        target = Event.objects.get(pk=event_or_id)
+    else:
+        target = Event.objects.get(slug=str(event_or_id))
+
+    from django.db import transaction
+    from services import audit
+
+    with transaction.atomic():
+        prev_current = Event.objects.select_for_update().filter(is_current=True).first()
+        prev_slug = prev_current.slug if prev_current else None
+
+        if prev_current and prev_current.pk != target.pk:
+            prev_current.is_current = False
+            prev_current.save(update_fields=['is_current'])
+
+        target.is_current = True
+        target.save(update_fields=['is_current'])
+
+        audit.record(actor, 'event.make_current', target, {
+            'before': prev_slug,
+            'after': target.slug,
+        })
+
+    return target
 
 
 def create_track(
@@ -225,6 +391,86 @@ def create_prize(
         audit.record(actor, 'prize.create', prize, {
             'event_slug': prize.event.slug,
             'rank_label': prize.rank_label,
+        })
+
+    return prize
+
+
+def update_track(actor, track_or_id, name=None, external_id=Ellipsis):
+    """
+    Update a track. Organizer-only operation.
+    All changes are audit-logged with before/after state.
+    """
+    require(actor, actor.is_organizer or actor.is_site_admin)
+    if isinstance(track_or_id, Track):
+        track = track_or_id
+    else:
+        track = Track.objects.get(pk=track_or_id)
+
+    before = {
+        'name': track.name,
+        'external_id': track.external_id,
+    }
+
+    from django.db import transaction
+    from services import audit
+
+    with transaction.atomic():
+        if name is not None:
+            track.name = name
+        if external_id is not Ellipsis:
+            track.external_id = external_id
+        track.save()
+
+        after = {
+            'name': track.name,
+            'external_id': track.external_id,
+        }
+
+        audit.record(actor, 'track.update', track, {
+            'event_slug': track.event.slug,
+            'before': before,
+            'after': after,
+        })
+
+    return track
+
+
+def update_prize(actor, prize_or_id, rank_label=None, description=None):
+    """
+    Update a prize. Organizer-only operation.
+    All changes are audit-logged with before/after state.
+    """
+    require(actor, actor.is_organizer or actor.is_site_admin)
+    if isinstance(prize_or_id, Prize):
+        prize = prize_or_id
+    else:
+        prize = Prize.objects.get(pk=prize_or_id)
+
+    before = {
+        'rank_label': prize.rank_label,
+        'description': prize.description,
+    }
+
+    from django.db import transaction
+    from services import audit
+
+    with transaction.atomic():
+        if rank_label is not None:
+            prize.rank_label = rank_label
+        if description is not None:
+            prize.description = description
+        prize.save()
+
+        after = {
+            'rank_label': prize.rank_label,
+            'description': prize.description,
+        }
+
+        audit.record(actor, 'prize.update', prize, {
+            'event_slug': prize.event.slug,
+            'before': before,
+            'after': after,
         })
 
     return prize

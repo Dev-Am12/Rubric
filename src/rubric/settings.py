@@ -26,6 +26,10 @@ SECRET_KEY = os.environ.get(
 
 DEBUG = os.environ.get('DJANGO_DEBUG', 'true').lower() in ('true', '1', 'yes')
 
+# Session cookie security setting: defaults to False for localhost docker compose adoptability,
+# set to True in production environments behind TLS (DECISIONS.md #14).
+RUBRIC_COOKIE_SECURE = os.environ.get('RUBRIC_COOKIE_SECURE', 'false').lower() in ('true', '1', 'yes')
+
 hosts_str = os.environ.get('DJANGO_ALLOWED_HOSTS', '*')
 if hosts_str == '*':
     ALLOWED_HOSTS = ['*']

@@ -16,6 +16,7 @@ from django.utils import timezone
 
 from accounts.actors import PermissionDenied, require
 from events.models import Event, Track
+from events.services import current_event
 from submissions.models import Project, ProjectStatus
 from submissions import services as submissions_services
 from teams.models import Team, TeamMembership
@@ -44,7 +45,8 @@ def gallery_view(request):
         tag=tag,
     ))
 
-    tracks = Track.objects.all().order_by('name')
+    event = getattr(request.actor, 'event', None) or current_event()
+    tracks = Track.objects.filter(event=event).order_by('name') if event else Track.objects.none()
 
     context = {
         'projects': projects,
@@ -94,7 +96,7 @@ def submit_view(request):
     if not request.actor.is_anonymous:
         user_teams = list(Team.objects.filter(memberships__user=request.actor.user))
 
-    event = getattr(request.actor, 'event', None) or Event.objects.first()
+    event = getattr(request.actor, 'event', None) or current_event()
     is_org = request.actor.is_organizer or request.actor.is_site_admin
     is_closed = bool(event and event.submissions_close_at and timezone.now() > event.submissions_close_at)
 
