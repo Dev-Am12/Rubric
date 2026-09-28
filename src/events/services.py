@@ -52,24 +52,33 @@ def create_event(
 
     user = actor.user if not actor.is_anonymous else None
 
-    event = Event.objects.create(
-        name=name,
-        slug=slug,
-        submissions_close_at=submissions_close_at,
-        submissions_open_at=submissions_open_at,
-        voting_opens_at=voting_opens_at,
-        voting_closes_at=voting_closes_at,
-        external_id=external_id,
-        created_by=user,
-        **kwargs,
-    )
+    from django.db import transaction
+    from services import audit
 
-    if user is not None:
-        EventMembership.objects.get_or_create(
-            event=event,
-            user=user,
-            role=EventRole.ORGANIZER,
+    with transaction.atomic():
+        event = Event.objects.create(
+            name=name,
+            slug=slug,
+            submissions_close_at=submissions_close_at,
+            submissions_open_at=submissions_open_at,
+            voting_opens_at=voting_opens_at,
+            voting_closes_at=voting_closes_at,
+            external_id=external_id,
+            created_by=user,
+            **kwargs,
         )
+
+        if user is not None:
+            EventMembership.objects.get_or_create(
+                event=event,
+                user=user,
+                role=EventRole.ORGANIZER,
+            )
+
+        audit.record(actor, 'event.create', event, {
+            'slug': event.slug,
+            'name': event.name,
+        })
 
     return event
 
@@ -125,12 +134,23 @@ def create_track(
     if resolved_event is None:
         raise ValueError("Event is required to create a track.")
 
-    return Track.objects.create(
-        event=resolved_event,
-        name=resolved_name,
-        external_id=external_id,
-        **kwargs,
-    )
+    from django.db import transaction
+    from services import audit
+
+    with transaction.atomic():
+        track = Track.objects.create(
+            event=resolved_event,
+            name=resolved_name,
+            external_id=external_id,
+            **kwargs,
+        )
+        audit.record(actor, 'track.create', track, {
+            'event_slug': track.event.slug,
+            'name': track.name,
+            'external_id': track.external_id,
+        })
+
+    return track
 
 
 def create_prize(
@@ -192,12 +212,22 @@ def create_prize(
     if resolved_event is None:
         raise ValueError("Event is required to create a prize.")
 
-    return Prize.objects.create(
-        event=resolved_event,
-        rank_label=resolved_rank_label,
-        description=resolved_description,
-        **kwargs,
-    )
+    from django.db import transaction
+    from services import audit
+
+    with transaction.atomic():
+        prize = Prize.objects.create(
+            event=resolved_event,
+            rank_label=resolved_rank_label,
+            description=resolved_description,
+            **kwargs,
+        )
+        audit.record(actor, 'prize.create', prize, {
+            'event_slug': prize.event.slug,
+            'rank_label': prize.rank_label,
+        })
+
+    return prize
 
 
 def get_event(slug_or_actor, slug=None):

@@ -29,12 +29,13 @@
         {% if request.actor and request.actor.is_organizer %}
           <li><a href="/organizer" id="nav-organizer-dashboard">Dashboard</a></li>
           <li><a href="/organizer/progress" id="nav-organizer-progress">Progress</a></li>
+          <li><a href="/organizer/rubric" id="nav-organizer-rubric">Rubric</a></li>
         {% endif %}
         <li><a href="/projects/new" id="nav-submit" class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;">Submit Project</a></li>
       </ul>
 
 
-      <div class="actor-info">
+      <div class="actor-info" style="display: flex; align-items: center; gap: 0.5rem;">
         {% if request.actor and not request.actor.is_anonymous %}
           <span class="actor-badge" id="actor-indicator">
             {% if request.actor.user.display_name %}
@@ -50,8 +51,11 @@
               (Participant)
             {% endif %}
           </span>
+          <a href="/logout" id="nav-logout" style="font-size: 0.8125rem; color: var(--text-secondary, #64748b); text-decoration: none;">Log Out</a>
         {% else %}
           <span class="actor-badge" id="actor-indicator">Anonymous</span>
+          <a href="/login" id="nav-login" style="font-size: 0.8125rem; color: var(--accent, #2563eb); text-decoration: none; font-weight: 500;">Log In</a>
+          <a href="/accounts/register" id="nav-register" style="font-size: 0.8125rem; color: var(--text-secondary, #64748b); text-decoration: none;">Register</a>
         {% endif %}
       </div>
     </nav>

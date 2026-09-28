@@ -101,6 +101,20 @@ class Command(BaseCommand):
             self._import_scores(data, event, rubric)
             self._import_persona_tokens(data, event)
 
+            from services import audit
+            audit.record(
+                actor='seed_fixtures',
+                action='fixture.import',
+                target=event,
+                payload={
+                    'event_id': event.external_id or str(event.pk),
+                    'tracks_count': len(track_map),
+                    'teams_count': len(team_map),
+                    'projects_count': len(data.get('projects', [])),
+                    'scores_count': len(data.get('scores', [])),
+                },
+            )
+
         self._print_seed_tokens()
 
     # ------------------------------------------------------------------

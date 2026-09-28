@@ -116,6 +116,20 @@ def save_ballot(actor, assignment_id, scores, comment=None, is_complete=False):
         BallotScore.objects.update_or_create(
             ballot=ballot, criterion=criterion, defaults={'value': numeric_value},
         )
+
+    if is_complete:
+        from services import audit
+        audit.record(
+            actor=actor,
+            action='ballot.submit',
+            target=ballot,
+            payload={
+                'assignment_id': assignment.pk,
+                'project_id': assignment.project_id,
+                'scores_count': len(validated_scores),
+            },
+        )
+
     return ballot
 
 
@@ -198,3 +212,142 @@ def export_csv(actor):
             flags_str,
         ])
     return output.getvalue()
+
+
+def get_rubric(actor, event=None):
+    """Get or create the default rubric for the event."""
+    target_event = event or getattr(actor, 'event', None)
+    if target_event is None:
+        from events.models import Event
+        target_event = Event.objects.first()
+    if target_event is None:
+        return None
+    from judging.models import Rubric
+    rubric, _ = Rubric.objects.get_or_create(event=target_event, defaults={'name': 'Default Rubric'})
+    return rubric
+
+
+@transaction.atomic
+def configure_rubric(actor, criteria):
+    """
+    Configure the rubric criteria and weights for an event (organizer-only).
+
+    Validates:
+      - At least one criterion.
+      - Finite positive weights (> 0).
+      - Positive max_score (> 0).
+      - Criteria that already have BallotScore rows cannot be deleted.
+      - Weight changes are recorded in the audit log with before/after values.
+    """
+    if not (actor.is_organizer or getattr(actor, 'is_site_admin', False)):
+        raise PermissionDenied
+
+    target_event = getattr(actor, 'event', None)
+    if target_event is None:
+        from events.models import Event
+        target_event = Event.objects.first()
+    if target_event is None:
+        raise ValueError("An event is required to configure a rubric.")
+
+    if not criteria or len(criteria) == 0:
+        raise ValueError("At least one criterion is required.")
+
+    from judging.models import Rubric, RubricCriterion, BallotScore
+    from services import audit
+
+    validated_items = []
+    seen_names = set()
+    for idx, item in enumerate(criteria):
+        name = item.get('name') if isinstance(item, dict) else getattr(item, 'name', None)
+        if not name or not str(name).strip():
+            raise ValueError("Criterion name cannot be empty.")
+        name = str(name).strip().lower()
+        if name in seen_names:
+            raise ValueError(f"Duplicate criterion name: '{name}'. Criterion names must be unique.")
+        seen_names.add(name)
+
+        raw_weight = item.get('weight') if isinstance(item, dict) else getattr(item, 'weight', None)
+        try:
+            weight = Decimal(str(raw_weight))
+            if not weight.is_finite() or weight <= 0:
+                raise ValueError()
+        except (InvalidOperation, TypeError, ValueError):
+            raise ValueError(f"Weight for criterion '{name}' must be a finite positive number.")
+
+        raw_max = item.get('max_score', 5) if isinstance(item, dict) else getattr(item, 'max_score', 5)
+        try:
+            max_score = Decimal(str(raw_max))
+            if not max_score.is_finite() or max_score <= 0:
+                raise ValueError()
+        except (InvalidOperation, TypeError, ValueError):
+            raise ValueError(f"Max score for criterion '{name}' must be a positive number.")
+
+        order = item.get('order', idx) if isinstance(item, dict) else getattr(item, 'order', idx)
+        validated_items.append({
+            'name': name,
+            'weight': weight,
+            'max_score': max_score,
+            'order': int(order) if str(order).isdigit() else idx,
+        })
+
+    rubric, _ = Rubric.objects.get_or_create(event=target_event, defaults={'name': 'Default Rubric'})
+    existing_criteria = {c.name: c for c in rubric.criteria.all()}
+
+    # Check deletion policy: criteria that already have BallotScore rows cannot be deleted
+    for name, c in existing_criteria.items():
+        if name not in seen_names:
+            if BallotScore.objects.filter(criterion=c).exists():
+                raise ValueError(
+                    f"Cannot delete criterion '{c.name}' because ballots have already been scored against it."
+                )
+
+    # Check for weight changes
+    weight_changes = []
+    for item in validated_items:
+        name = item['name']
+        if name in existing_criteria:
+            old_c = existing_criteria[name]
+            if old_c.weight != item['weight']:
+                weight_changes.append({
+                    'name': name,
+                    'before': float(old_c.weight),
+                    'after': float(item['weight']),
+                })
+
+    # Perform mutations
+    for name, c in list(existing_criteria.items()):
+        if name not in seen_names:
+            c.delete()
+
+    for item in validated_items:
+        RubricCriterion.objects.update_or_create(
+            rubric=rubric,
+            name=item['name'],
+            defaults={
+                'weight': item['weight'],
+                'max_score': item['max_score'],
+                'order': item['order'],
+            },
+        )
+
+    # Audit log entry with before/after weight changes
+    audit.record(
+        actor=actor,
+        action='rubric.configure',
+        target=rubric,
+        payload={
+            'event_id': target_event.external_id or str(target_event.pk),
+            'criteria_count': len(validated_items),
+            'weight_changes': weight_changes,
+            'criteria': [
+                {
+                    'name': item['name'],
+                    'weight': float(item['weight']),
+                    'max_score': float(item['max_score']),
+                }
+                for item in validated_items
+            ],
+        },
+    )
+
+    return rubric

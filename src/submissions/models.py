@@ -55,6 +55,7 @@ class Project(models.Model):
         related_name='duplicates',
     )
     duplicate_flag_reason = models.TextField(null=True, blank=True)
+    duplicate_override = models.BooleanField(default=False)
 
     class Meta:
         db_table = 'submissions_project'

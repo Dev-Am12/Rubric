@@ -4,12 +4,19 @@ URL configuration for rubric project.
 
 from django.urls import path
 
+from accounts.views import (
+    register_view,
+    login_view,
+    logout_view,
+)
 from accounts.views_debug import leaky_scores_view
 from api.views import (
     judge_scores_view,
     csv_export_view,
     ballot_submit_view,
     organizer_progress_view,
+    organizer_audit_log_view,
+    organizer_audit_verify_view,
 )
 from judging.views import (
     judge_queue_view,
@@ -21,6 +28,8 @@ from judging.views_organizer import (
     organizer_dashboard_view,
     organizer_assignments_view,
     organizer_normalization_view,
+    organizer_audit_log_page_view,
+    organizer_rubric_view,
 )
 from submissions.views import (
     gallery_view,
@@ -42,6 +51,17 @@ urlpatterns = [
     path('organizer/assignments', organizer_assignments_view, name='organizer_assignments'),
     path('organizer/normalization', organizer_normalization_view, name='organizer_normalization'),
     path('organizer/progress', organizer_progress_page_view, name='organizer_progress_page'),
+    path('organizer/audit-log', organizer_audit_log_page_view, name='organizer_audit_log_page'),
+    path('organizer/rubric', organizer_rubric_view, name='organizer_rubric'),
+
+    # -----------------------------------------------------------------------
+    # Accounts UI routes (UX.md §1, API.md §3)
+    # -----------------------------------------------------------------------
+    path('accounts/register', register_view, name='register'),
+    path('login', login_view, name='login'),
+    path('accounts/login', login_view, name='accounts_login'),
+    path('logout', logout_view, name='logout'),
+    path('accounts/logout', logout_view, name='accounts_logout'),
 
     # -----------------------------------------------------------------------
     # Submissions UI routes (UX.md §1, API.md §2)
@@ -58,6 +78,8 @@ urlpatterns = [
     path('api/judge/scores', judge_scores_view, name='judge_scores'),
     path('api/v1/ballots/<int:assignment_id>', ballot_submit_view, name='ballot_submit'),
     path('api/v1/organizer/progress', organizer_progress_view, name='organizer_progress'),
+    path('api/v1/organizer/audit-log', organizer_audit_log_view, name='organizer_audit_log'),
+    path('api/v1/organizer/audit-log/verify', organizer_audit_verify_view, name='organizer_audit_verify'),
     path('api/export.csv', csv_export_view, name='csv_export'),
 
     # -----------------------------------------------------------------------

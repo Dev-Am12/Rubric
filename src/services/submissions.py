@@ -9,6 +9,18 @@ from submissions.services import (
     submit,
     get,
     gallery,
+    restore_duplicate,
+    detect_and_flag_duplicates,
+    detect_duplicates_for_event,
 )
 
-__all__ = ["create", "update", "submit", "get", "gallery"]
+__all__ = [
+    "create",
+    "update",
+    "submit",
+    "get",
+    "gallery",
+    "restore_duplicate",
+    "detect_and_flag_duplicates",
+    "detect_duplicates_for_event",
+]

@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Organizer Audit Log — Rubric{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1000px; margin: 0 auto; padding: var(--space-xl) var(--space-md);">
+
+  <!-- Audit Log Header -->
+  <div style="margin-bottom: var(--space-lg); display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-md);">
+    <div>
+      <div style="display: flex; align-items: center; gap: var(--space-xs); margin-bottom: var(--space-xs);">
+        <span class="badge" style="background: var(--accent-subtle, #e0f2fe); color: var(--accent, #0284c7); font-weight: 600; font-size: 0.75rem; padding: 2px 8px; border-radius: var(--radius-sm, 4px); border: 1px solid var(--accent-border, #bae6fd);">
+          Audit History
+        </span>
+        <span style="font-size: 0.75rem; color: var(--text-secondary, #64748b);">
+          • Cryptographic Hash Chain
+        </span>
+      </div>
+      <h1 style="font-size: 1.75rem; font-weight: 700; margin: 0 0 var(--space-xs) 0;" id="audit-log-title">
+        Organizer Audit Log
+      </h1>
+      <p style="color: var(--text-secondary, #64748b); margin: 0; font-size: 0.9375rem;">
+        Append-only, hash-chained log recording all state transitions and policy decisions.
+      </p>
+    </div>
+
+    <!-- Quick action links -->
+    <div style="display: flex; gap: var(--space-sm); align-items: center; flex-wrap: wrap;">
+      <a href="/organizer" class="btn btn-secondary" style="font-size: 0.875rem;">
+        ← Dashboard
+      </a>
+      <a href="/api/v1/organizer/audit-log/verify?download=1" class="btn btn-secondary" id="btn-export-audit" style="font-size: 0.875rem;">
+        Export JSON ▾
+      </a>
+      <a href="/organizer/audit-log?verify=1" class="btn btn-primary" id="btn-verify-audit" style="font-size: 0.875rem;">
+        Verify Chain
+      </a>
+    </div>
+  </div>
+
+  <!-- Chain Status Card -->
+  <div id="audit-status-card" class="card" style="padding: var(--space-md); margin-bottom: var(--space-lg); background: #ffffff; border: 1px solid var(--border-color, #e2e8f0); border-radius: var(--radius-md, 8px);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-md);">
+      <div>
+        <div style="font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary, #64748b); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">
+          Chain Integrity Status
+        </div>
+        <div style="display: flex; align-items: center; gap: var(--space-sm);">
+          {% if verified %}
+            {% if is_valid %}
+              <span id="chain-status-badge" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: #166534; background: #dcfce7; padding: 3px 10px; border-radius: 9999px; font-size: 0.875rem; border: 1px solid #bbf7d0;">
+                <span style="font-size: 1rem;">✓</span> Chain Verified Intact
+              </span>
+            {% else %}
+              <span id="chain-status-badge" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: #991b1b; background: #fee2e2; padding: 3px 10px; border-radius: 9999px; font-size: 0.875rem; border: 1px solid #fecaca;">
+                <span style="font-size: 1rem;">✗</span> Tamper Detected at Seq {{ first_bad_seq }}
+              </span>
+            {% endif %}
+          {% else %}
+            <span id="chain-status-badge" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 500; color: var(--text-primary, #1e293b); background: #f1f5f9; padding: 3px 10px; border-radius: 9999px; font-size: 0.875rem;">
+              Click 'Verify Chain' to check cryptographic links
+            </span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div style="text-align: right;">
+        <div style="font-size: 0.8125rem; color: var(--text-secondary, #64748b);">
+          Head Hash (<code style="font-size: 0.8125rem;">seq {{ head_seq }}</code>):
+        </div>
+        <div style="font-family: monospace; font-size: 0.8125rem; color: var(--text-primary, #334155); word-break: break-all; max-width: 450px;" id="head-hash-display">
+          {{ head_hash }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audit Log Entries Table -->
+  <div class="card" style="padding: 0; overflow: hidden; background: #ffffff; border: 1px solid var(--border-color, #e2e8f0); border-radius: var(--radius-md, 8px);">
+    <div style="padding: var(--space-md); border-bottom: 1px solid var(--border-color, #e2e8f0); display: flex; justify-content: space-between; align-items: center;">
+      <h2 style="font-size: 1.125rem; font-weight: 600; margin: 0;">
+        Log Entries ({{ total }})
+      </h2>
+      <div style="font-size: 0.875rem; color: var(--text-secondary, #64748b);">
+        Page {{ page }} of {{ pages }}
+      </div>
+    </div>
+
+    <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;" id="audit-log-table">
+        <thead>
+          <tr style="background: #f8fafc; border-bottom: 1px solid var(--border-color, #e2e8f0); text-align: left; color: var(--text-secondary, #64748b);">
+            <th style="padding: 10px 14px; font-weight: 600; width: 60px;">Seq</th>
+            <th style="padding: 10px 14px; font-weight: 600; width: 150px;">Timestamp</th>
+            <th style="padding: 10px 14px; font-weight: 600; width: 170px;">Actor</th>
+            <th style="padding: 10px 14px; font-weight: 600; width: 140px;">Action</th>
+            <th style="padding: 10px 14px; font-weight: 600; width: 160px;">Target</th>
+            <th style="padding: 10px 14px; font-weight: 600;">Payload</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in entries %}
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 10px 14px; font-family: monospace; font-weight: 600; color: #0284c7;">
+                #{{ entry.seq }}
+              </td>
+              <td style="padding: 10px 14px; color: var(--text-secondary, #64748b); font-size: 0.8125rem; white-space: nowrap;">
+                {{ entry.created_at|truncatechars:19 }}
+              </td>
+              <td style="padding: 10px 14px;">
+                {% if entry.actor_label %}
+                  <span class="badge" style="background: #f3e8ff; color: #7e22ce; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;">
+                    {{ entry.actor_label }}
+                  </span>
+                {% elif entry.actor_user %}
+                  <span style="font-weight: 500;">
+                    {{ entry.actor_user.display_name|default:entry.actor_user.email }}
+                  </span>
+                {% else %}
+                  <span style="color: var(--text-secondary, #64748b);">Anonymous</span>
+                {% endif %}
+              </td>
+              <td style="padding: 10px 14px;">
+                <span style="font-weight: 600; font-family: monospace; font-size: 0.8125rem; color: #334155;">
+                  {{ entry.action }}
+                </span>
+              </td>
+              <td style="padding: 10px 14px; font-family: monospace; font-size: 0.8125rem; color: var(--text-secondary, #64748b);">
+                {{ entry.target_type }}:{{ entry.target_id }}
+              </td>
+              <td style="padding: 10px 14px; font-family: monospace; font-size: 0.75rem; color: #475569; word-break: break-all;">
+                <code>{{ entry.payload }}</code>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" style="padding: 30px; text-align: center; color: var(--text-secondary, #64748b);">
+                No audit log entries recorded yet.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination Controls -->
+    {% if pages > 1 %}
+      <div style="padding: var(--space-md); border-top: 1px solid var(--border-color, #e2e8f0); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          {% if has_prev %}
+            <a href="?page={{ prev_page }}{% if verified %}&verify=1{% endif %}" class="btn btn-secondary" style="font-size: 0.8125rem;">
+              ← Previous
+            </a>
+          {% endif %}
+        </div>
+        <div style="font-size: 0.875rem; color: var(--text-secondary, #64748b);">
+          Page {{ page }} of {{ pages }}
+        </div>
+        <div>
+          {% if has_next %}
+            <a href="?page={{ next_page }}{% if verified %}&verify=1{% endif %}" class="btn btn-secondary" style="font-size: 0.8125rem;">
+              Next →
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

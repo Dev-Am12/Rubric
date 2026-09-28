@@ -55,21 +55,32 @@ def create(actor, team, track, title, summary, description='',
         if event.submissions_close_at and timezone.now() > event.submissions_close_at:
             raise PermissionDenied()
 
-    return Project.objects.create(
-        event=event,
-        team=team,
-        track=track,
-        title=title,
-        summary=summary,
-        description=description,
-        repo_url=repo_url,
-        demo_video_url=demo_video_url,
-        live_url=live_url,
-        tech_tags=tech_tags or [],
-        custom_answers=custom_answers or {},
-        status=ProjectStatus.DRAFT,
-        **kwargs,
-    )
+    from services import audit
+
+    with transaction.atomic():
+        project = Project.objects.create(
+            event=event,
+            team=team,
+            track=track,
+            title=title,
+            summary=summary,
+            description=description,
+            repo_url=repo_url,
+            demo_video_url=demo_video_url,
+            live_url=live_url,
+            tech_tags=tech_tags or [],
+            custom_answers=custom_answers or {},
+            status=ProjectStatus.DRAFT,
+            **kwargs,
+        )
+        audit.record(actor, 'submission.create', project, {
+            'team_id': team.id,
+            'track_id': track.id if track else None,
+            'title': project.title,
+            'status': project.status,
+        })
+
+    return project
 
 
 def update(actor, project_id, **fields):
@@ -84,6 +95,8 @@ def update(actor, project_id, **fields):
     Organizers can override the deadline (logged).
     """
     require(actor, not actor.is_anonymous)
+
+    from services import audit
 
     with transaction.atomic():
         try:
@@ -110,11 +123,18 @@ def update(actor, project_id, **fields):
             'title', 'summary', 'description', 'repo_url',
             'demo_video_url', 'live_url', 'tech_tags', 'custom_answers',
         }
+        updated_keys = []
         for key, value in fields.items():
             if key in allowed_fields:
                 setattr(project, key, value)
+                updated_keys.append(key)
 
         project.save()
+
+        audit.record(actor, 'submission.update', project, {
+            'updated_fields': sorted(updated_keys),
+            'title': project.title,
+        })
 
     return project
 
@@ -194,11 +214,14 @@ def detect_and_flag_duplicates(project):
         later.is_duplicate_of = None
       - Fill duplicate_flag_reason with actual reason found:
         (team, title similarity, time gap)
-      - Log the action.
+      - Log the action with audit.record('duplicate-detection policy v1', ...).
 
     Returns the flagged earlier project if a duplicate was detected, or None.
     """
     if project.status != ProjectStatus.SUBMITTED:
+        return None
+
+    if getattr(project, 'duplicate_override', False):
         return None
 
     candidates = Project.objects.filter(
@@ -207,7 +230,12 @@ def detect_and_flag_duplicates(project):
         status=ProjectStatus.SUBMITTED,
     ).exclude(id=project.id)
 
+    from services import audit
+
     for candidate in candidates:
+        if getattr(candidate, 'duplicate_override', False):
+            continue
+
         is_match, similarity = are_titles_near_identical(project.title, candidate.title)
         if is_match:
             t_proj = project.submitted_at or project.created_at
@@ -218,20 +246,41 @@ def detect_and_flag_duplicates(project):
             else:
                 earlier, later = candidate, project
 
-            time_str = _format_time_gap(earlier.submitted_at, later.submitted_at)
-            team_label = earlier.team.external_id or earlier.team.name
+            if getattr(earlier, 'duplicate_override', False):
+                continue
 
-            earlier.is_duplicate_of = later
-            earlier.duplicate_flag_reason = (
-                f"Same team ({team_label}), near-identical title "
-                f"({similarity:.0%} match), submitted {time_str} apart. "
-                f"Earlier submission flagged against later canonical one per NORMALIZATION.md D-02."
-            )
-            earlier.save(update_fields=['is_duplicate_of', 'duplicate_flag_reason'])
+            if earlier.is_duplicate_of_id == later.pk:
+                return earlier
 
-            later.is_duplicate_of = None
-            later.duplicate_flag_reason = None
-            later.save(update_fields=['is_duplicate_of', 'duplicate_flag_reason'])
+            with transaction.atomic():
+                time_str = _format_time_gap(earlier.submitted_at, later.submitted_at)
+                team_label = earlier.team.external_id or earlier.team.name
+
+                earlier.is_duplicate_of = later
+                earlier.duplicate_flag_reason = (
+                    f"Same team ({team_label}), near-identical title "
+                    f"({similarity:.0%} match), submitted {time_str} apart. "
+                    f"Earlier submission flagged against later canonical one per NORMALIZATION.md D-02."
+                )
+                earlier.save(update_fields=['is_duplicate_of', 'duplicate_flag_reason'])
+
+                later.is_duplicate_of = None
+                later.duplicate_flag_reason = None
+                later.save(update_fields=['is_duplicate_of', 'duplicate_flag_reason'])
+
+                audit.record(
+                    actor="duplicate-detection policy v1",
+                    action="duplicate.flag",
+                    target=earlier,
+                    payload={
+                        "earlier_id": earlier.pk,
+                        "earlier_external_id": earlier.external_id,
+                        "canonical_id": later.pk,
+                        "canonical_external_id": later.external_id,
+                        "reason": earlier.duplicate_flag_reason,
+                        "similarity": round(similarity, 4),
+                    },
+                )
 
             logger.info(
                 "Duplicate detected per D-02: %s flagged as duplicate of %s (%s)",
@@ -277,6 +326,8 @@ def submit(actor, project_id):
     """
     require(actor, not actor.is_anonymous)
 
+    from services import audit
+
     with transaction.atomic():
         try:
             project = Project.objects.select_for_update().get(id=project_id)
@@ -296,8 +347,54 @@ def submit(actor, project_id):
         project.submitted_at = timezone.now()
         project.save()
 
+        audit.record(actor, 'submission.submit', project, {
+            'team_id': project.team_id,
+            'submitted_at': project.submitted_at.isoformat(),
+            'title': project.title,
+        })
+
         # Run general duplicate detection per NORMALIZATION.md D-02
         detect_and_flag_duplicates(project)
+
+    return project
+
+
+def restore_duplicate(actor, project_id):
+    """
+    Restore a duplicate submission (organizer-only).
+    Clears is_duplicate_of and sets duplicate_override=True so the detector
+    never re-flags it on submit() or seed_fixtures re-runs.
+    Logs an audit entry.
+    """
+    require(actor, not actor.is_anonymous)
+    require(actor, actor.is_organizer or getattr(actor, 'is_site_admin', False))
+
+    from services import audit
+
+    with transaction.atomic():
+        try:
+            if isinstance(project_id, int) or (isinstance(project_id, str) and project_id.isdigit()):
+                project = Project.objects.select_for_update().get(id=int(project_id))
+            else:
+                project = Project.objects.select_for_update().get(external_id=str(project_id))
+        except Project.DoesNotExist:
+            raise ValueError(f"Project not found: {project_id}")
+
+        project.is_duplicate_of = None
+        project.duplicate_override = True
+        project.duplicate_flag_reason = "Duplicate flag overridden and restored by organizer"
+        project.save(update_fields=['is_duplicate_of', 'duplicate_override', 'duplicate_flag_reason'])
+
+        audit.record(
+            actor=actor,
+            action='duplicate.restore',
+            target=project,
+            payload={
+                'project_id': project.pk,
+                'external_id': project.external_id,
+                'title': project.title,
+            },
+        )
 
     return project
 

@@ -230,7 +230,7 @@ def run(actor, k, seed=None):
 
     anchor_injections = _inject_anchors(event, rng, eligibility_by_track)
     connectivity_report = compute_graph_health(event)
-    return AssignmentRun.objects.create(
+    assignment_run = AssignmentRun.objects.create(
         event=event,
         run_at=timezone.now(),
         target_k=int(k),
@@ -239,6 +239,21 @@ def run(actor, k, seed=None):
         connectivity_report=connectivity_report,
         anchor_injections=anchor_injections,
     )
+
+    from services import audit
+    audit.record(
+        actor=actor,
+        action='assignment.run',
+        target=assignment_run,
+        payload={
+            'target_k': int(k),
+            'seed': seed,
+            'under_coverage_count': len(under_coverage),
+            'anchor_injections_count': len(anchor_injections),
+        },
+    )
+
+    return assignment_run
 
 
 def get_run(actor, run_id):

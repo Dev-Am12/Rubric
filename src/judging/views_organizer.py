@@ -22,6 +22,7 @@ from events.models import Track
 from judging.models import AssignmentRun, NormalizationRun
 from services import assignment as assignment_services
 from services import normalization as norm_services
+from services import submissions as submission_services
 from submissions.models import Project, ProjectStatus
 
 
@@ -42,12 +43,10 @@ def organizer_dashboard_view(request):
         if action == 'restore_duplicate':
             project_id = request.POST.get('project_id')
             try:
-                project = Project.objects.get(pk=project_id, event=event)
-                project.is_duplicate_of = None
-                project.save(update_fields=['is_duplicate_of'])
+                submission_services.restore_duplicate(request.actor, project_id)
                 # Re-run normalization so flags and rankings update immediately
                 norm_services.run(request.actor)
-            except Project.DoesNotExist:
+            except (Project.DoesNotExist, ValueError):
                 pass
             return redirect('organizer_dashboard')
 
@@ -296,3 +295,120 @@ def organizer_normalization_view(request):
         'excluded_scores': sum(1 for r in table_rows if r['normalized_rank'] is None),
     }
     return render(request, 'organizer/normalization.html', context)
+
+
+@require_http_methods(['GET'])
+def organizer_audit_log_page_view(request):
+    """
+    HTML viewer for organizer audit log (/organizer/audit-log).
+    Displays the chain, head hash, Verify button, and Export download.
+    """
+    if not (request.actor.is_organizer or getattr(request.actor, 'is_site_admin', False)):
+        raise PermissionDenied
+
+    from audit.models import AuditChainHead
+    from services import audit as audit_services
+
+    page = request.GET.get('page', 1)
+    page_size = request.GET.get('page_size', 25)
+    try:
+        page = int(page)
+        page_size = int(page_size)
+    except (ValueError, TypeError):
+        page = 1
+        page_size = 25
+
+    log_data = audit_services.list(request.actor, page=page, page_size=page_size)
+    head = AuditChainHead.objects.filter(pk=1).first()
+
+    verified = False
+    is_valid = False
+    first_bad_seq = None
+    if request.GET.get('verify'):
+        verified = True
+        is_valid, first_bad_seq, _ = audit_services.verify(request.actor)
+
+    context = {
+        'entries': log_data['results'],
+        'page': log_data['page'],
+        'pages': log_data['pages'],
+        'total': log_data['total'],
+        'has_prev': log_data['page'] > 1,
+        'has_next': log_data['page'] < log_data['pages'],
+        'prev_page': log_data['page'] - 1,
+        'next_page': log_data['page'] + 1,
+        'head_seq': head.seq if head else 0,
+        'head_hash': head.head_hash if head else audit_services.GENESIS_HASH,
+        'verified': verified,
+        'is_valid': is_valid,
+        'first_bad_seq': first_bad_seq,
+    }
+    return render(request, 'organizer/audit_log.html', context)
+
+
+@require_http_methods(['GET', 'POST'])
+def organizer_rubric_view(request):
+    """
+    Organizer view to inspect and configure rubric criteria and weights (/organizer/rubric).
+    """
+    if not (request.actor.is_organizer or getattr(request.actor, 'is_site_admin', False)):
+        raise PermissionDenied
+
+    from services import judging as judging_services
+
+    rubric = judging_services.get_rubric(request.actor)
+    error = None
+    saved = bool(request.GET.get('saved'))
+
+    if request.method == 'POST':
+        import json
+        if request.content_type == 'application/json':
+            payload = json.loads(request.body or '{}')
+            criteria = payload.get('criteria', [])
+        else:
+            names = request.POST.getlist('name')
+            weights = request.POST.getlist('weight')
+            max_scores = request.POST.getlist('max_score')
+            orders = request.POST.getlist('order')
+            criteria = []
+            for i in range(len(names)):
+                clean_name = names[i].strip()
+                if clean_name:
+                    criteria.append({
+                        'name': clean_name,
+                        'weight': weights[i] if i < len(weights) else '1.0',
+                        'max_score': max_scores[i] if i < len(max_scores) else '5.0',
+                        'order': orders[i] if i < len(orders) else i,
+                    })
+
+        try:
+            judging_services.configure_rubric(request.actor, criteria)
+            return redirect('/organizer/rubric?saved=1')
+        except ValueError as exc:
+            error = str(exc)
+
+    criteria_list = []
+    if rubric:
+        for c in rubric.criteria.all():
+            score_count = c.ballot_scores.count()
+            criteria_list.append({
+                'id': c.pk,
+                'name': c.name,
+                'weight': c.weight,
+                'max_score': c.max_score,
+                'order': c.order,
+                'is_scored': score_count > 0,
+                'score_count': score_count,
+            })
+
+    context = {
+        'rubric': rubric,
+        'criteria': criteria_list,
+        'error': error,
+        'saved': saved,
+        'has_scored_criteria': any(c['is_scored'] for c in criteria_list),
+    }
+    status_code = 400 if error else 200
+    return render(request, 'organizer/rubric.html', context, status=status_code)
+
+

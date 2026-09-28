@@ -19,6 +19,8 @@ that says so explicitly, so the history stays honest.
 - [9. CSRF enforcement depends on how you authenticated, not a global toggle](#9-csrf-enforcement-depends-on-how-you-authenticated-not-a-global-toggle)
 - [10. Judge score isolation uses the authenticated user identity](#10-judge-score-isolation-uses-the-authenticated-user-identity)
 - [11. Normalization claims are corrected against measured fixture behavior](#11-normalization-claims-are-corrected-against-measured-fixture-behavior)
+- [12. The audit chain is tamper-evident, not proof against a database owner](#12-the-audit-chain-is-tamper-evident-not-proof-against-a-database-owner)
+- [13. Rubric editing after scoring begins: weight adjustments are permitted, criterion deletion is forbidden](#13-rubric-editing-after-scoring-begins-weight-adjustments-are-permitted-criterion-deletion-is-forbidden)
 
 ---
 
@@ -129,3 +131,23 @@ that says so explicitly, so the history stays honest.
 **Rationale:** D-03's earlier wording said a constant judge's contribution "converges toward zero." We implemented the displayed formula exactly and measured the real fixture: `jdg_07` contributes 0.5115488667 to each of `prj_09`, `prj_17`, and `prj_19`. The equal contribution is non-differentiating, while its absolute value depends on the pooled mean. Leave-one-out measurements showed score changes for `prj_09` and `prj_17` in the same range as a non-constant three-assignment control; `prj_19`'s larger change coincides with the remaining reviewer count falling to one. Baseline neighbor gaps also showed much tighter score spacing around `prj_09` and `prj_17` than around the control projects. Rank movement was therefore dropped as a T2 assertion: rank is sensitive to local crowding even when score changes are comparable. This correction came from measuring the fixture before asserting the test, not from changing the formula to fit an overstrong claim.
 
 **In plain terms:** The formula did not make the constant judge's contribution zero; it made the contribution the same on each of that judge's projects. We measured score changes and neighboring score gaps before revising the claim, and documented that ranks can move sharply in a crowded field.
+
+---
+
+## 12. The audit chain is tamper-evident, not proof against a database owner
+
+**Decision:** Treat the SHA-256 audit chain as evidence that detects changed, removed, reordered, or missing rows when checked against a trusted chain head. Do not describe it as proof that the recorded events are true or as protection against someone with full database write access. A database owner with enough access can alter the entries and recompute every later hash and the stored head. For stronger evidence, publish the current head hash outside the database in a separately controlled place.
+
+**Rationale:** The chain serializes appends and makes ordinary row-level tampering visible, including changes that bypass the application model. Its trust boundary ends at the database owner's write authority: the entry hashes and stored head are all in that same trust domain. Naming this limit prevents cryptographic formatting from being mistaken for an independent witness. Publishing the head elsewhere gives an auditor a reference that a database-only rewrite cannot silently replace.
+
+**In plain terms:** The chain shows whether its history still matches its recorded head. Someone who can rewrite the whole database can also rebuild the chain, so the head hash needs to be published elsewhere if we want evidence beyond the database itself.
+
+---
+
+## 13. Rubric editing after scoring begins: weight adjustments are permitted, criterion deletion is forbidden
+
+**Decision:** Once scoring has commenced (at least one `BallotScore` row has been recorded against a criterion), that criterion cannot be deleted or removed from the rubric. However, criterion weights ($w_k$) remain editable by organizers; every weight change is recorded in the tamper-evident audit log with before and after values, and the organizer interface requires re-running normalization to reflect the updated weights across $y_{ij}$.
+
+**Rationale:** In live hackathons, organizers occasionally discover that a criterion was misweighted (e.g., "technical execution" should count 50% rather than 20% compared to "presentation"). Forbidding all rubric edits mid-event would force organizers to invalidate every existing evaluation or abandon weighted scoring entirely. Conversely, allowing criteria deletion would orphan existing `BallotScore` observations, destroying historical judge inputs and invalidating the statistical integrity of earlier evaluations. Permitting weight modifications preserves all raw score observations $s_{ijk}$ while allowing deterministic recalculation of $y_{ij} = \frac{\sum_k w_k s_{ijk}}{\sum_k w_k}$. The integrity trade-off is made transparent through three defenses: (1) deletion protection prevents data loss, (2) the tamper-evident audit log records exact before/after weight values and the organizer actor, and (3) normalization run history and the dashboard explicitly show the recalculation, preventing covert outcome manipulation.
+
+**In plain terms:** Once judges start scoring, you can't delete a criterion and throw away their work, but you can adjust how much each criterion is weighted. Every change is logged with before-and-after numbers, and normalization has to be re-run so the leaderboard stays honest.

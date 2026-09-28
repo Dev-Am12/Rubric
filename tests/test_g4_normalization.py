@@ -12,9 +12,11 @@ from django.utils import timezone
 
 from accounts.actors import Actor, PermissionDenied
 from accounts.models import EventMembership, EventRole, User
+from audit.models import AuditLogEntry
 from events.models import Event, Track
 from judging.models import Ballot, BallotScore, JudgeAssignment, NormalizationRun, NormalizedScore, Rubric, RubricCriterion
 from services.normalization import build_proof_artifact, get_run, normalized_output_bytes, normalized_score_payload, run
+from services.submissions import restore_duplicate
 from submissions.models import Project, ProjectStatus
 from teams.models import Team
 
@@ -169,6 +171,43 @@ class FixtureNormalizationTests(TestCase):
         gallery_project_ids = {project.pk for project in gallery_response.context['projects']}
         self.assertNotIn(earlier.pk, gallery_project_ids)
         self.assertIn(later.pk, gallery_project_ids)
+
+        # T6: an audit log entry exists recording the auto-flag
+        auto_flag_entry = AuditLogEntry.objects.filter(
+            action='duplicate.flag',
+            actor_label='duplicate-detection policy v1',
+            target_id=str(earlier.pk),
+        ).first()
+        self.assertIsNotNone(auto_flag_entry)
+        self.assertEqual(auto_flag_entry.payload.get('canonical_id'), later.pk)
+
+        # T6: reversing it via the organizer action un-excludes prj_07 and is itself logged
+        restore_duplicate(self.organizer_actor, earlier.pk)
+
+        earlier.refresh_from_db()
+        self.assertIsNone(earlier.is_duplicate_of)
+        self.assertTrue(earlier.duplicate_override)
+
+        # The restore is recorded in the audit log
+        restore_entry = AuditLogEntry.objects.filter(
+            action='duplicate.restore',
+            target_id=str(earlier.pk),
+        ).first()
+        self.assertIsNotNone(restore_entry)
+        self.assertEqual(restore_entry.actor_user_id, self.organizer.pk)
+
+        # Re-running normalization ranks prj_07 and un-excludes it
+        norm_after = run(self.organizer_actor)
+        score_after = norm_after.scores.get(project=earlier)
+        self.assertIsNotNone(score_after.rank)
+        self.assertIsNotNone(score_after.normalized_mean)
+
+        # prj_07 is now present in the public gallery
+        gallery_after = self.client.get('/projects')
+        gallery_after_ids = {project.pk for project in gallery_after.context['projects']}
+        self.assertIn(earlier.pk, gallery_after_ids)
+        self.assertIn(later.pk, gallery_after_ids)
+
 
     def test_deterministic_output(self):
         first = run(self.organizer_actor)

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Register — Rubric{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 440px; margin: var(--space-xl) auto; padding: 0 var(--space-md);">
+  <div class="card" style="padding: var(--space-xl); background: #ffffff; border: 1px solid var(--border-color, #e2e8f0); border-radius: var(--radius-md, 8px);">
+    <div style="margin-bottom: var(--space-lg); text-align: center;">
+      <h1 style="font-size: 1.5rem; font-weight: 700; margin: 0 0 6px 0;" id="register-title">
+        Create Account
+      </h1>
+      <p style="color: var(--text-secondary, #64748b); font-size: 0.875rem; margin: 0;">
+        Join Rubric to submit projects and participate.
+      </p>
+    </div>
+
+    {% if error %}
+      <div id="register-error" style="background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 10px 14px; border-radius: 6px; font-size: 0.875rem; margin-bottom: var(--space-md);">
+        {{ error }}
+      </div>
+    {% endif %}
+
+    <form method="POST" action="/accounts/register" id="register-form">
+      {% csrf_token %}
+      {% if request.GET.next %}
+        <input type="hidden" name="next" value="{{ request.GET.next }}">
+      {% endif %}
+
+      <div style="margin-bottom: var(--space-md);">
+        <label for="id_email" style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 4px;">
+          Email address
+        </label>
+        <input
+          type="email"
+          name="email"
+          id="id_email"
+          required
+          value="{{ email|default:'' }}"
+          placeholder="you@example.com"
+          style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px; font-size: 0.9375rem; box-sizing: border-box;"
+        >
+      </div>
+
+      <div style="margin-bottom: var(--space-md);">
+        <label for="id_display_name" style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 4px;">
+          Display name
+        </label>
+        <input
+          type="text"
+          name="display_name"
+          id="id_display_name"
+          value="{{ display_name|default:'' }}"
+          placeholder="Ada Lovelace"
+          style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px; font-size: 0.9375rem; box-sizing: border-box;"
+        >
+      </div>
+
+      <div style="margin-bottom: var(--space-lg);">
+        <label for="id_password" style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 4px;">
+          Password
+        </label>
+        <input
+          type="password"
+          name="password"
+          id="id_password"
+          required
+          minlength="6"
+          placeholder="At least 6 characters"
+          style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px; font-size: 0.9375rem; box-sizing: border-box;"
+        >
+      </div>
+
+      <button
+        type="submit"
+        id="btn-register"
+        class="btn btn-primary"
+        style="width: 100%; padding: 10px; font-size: 0.9375rem; font-weight: 600;"
+      >
+        Register
+      </button>
+    </form>
+
+    <div style="margin-top: var(--space-lg); text-align: center; font-size: 0.875rem; color: var(--text-secondary, #64748b);">
+      Already have an account? <a href="/login" style="color: var(--accent, #0284c7); font-weight: 600;">Log in</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

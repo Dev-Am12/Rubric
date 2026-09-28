@@ -34,26 +34,36 @@ def create_team(actor, event, name, external_id=None, invite_code=None,
 
     user = created_by_user or actor.user
 
-    if invite_code is None:
+    if not invite_code:
         invite_code = _generate_invite_code()
 
-    team = Team.objects.create(
-        event=event,
-        name=name,
-        invite_code=invite_code,
-        external_id=external_id,
-        created_by=user,
-    )
+    from django.db import transaction
+    from services import audit
 
-    # Creator becomes a member
-    TeamMembership.objects.get_or_create(team=team, user=user)
+    with transaction.atomic():
+        team = Team.objects.create(
+            event=event,
+            name=name,
+            invite_code=invite_code,
+            external_id=external_id,
+            created_by=user,
+        )
 
-    # Ensure the creator has a PARTICIPANT membership for the event
-    EventMembership.objects.get_or_create(
-        event=event,
-        user=user,
-        role=EventRole.PARTICIPANT,
-    )
+        # Creator becomes a member
+        TeamMembership.objects.get_or_create(team=team, user=user)
+
+        # Ensure the creator has a PARTICIPANT membership for the event
+        EventMembership.objects.get_or_create(
+            event=event,
+            user=user,
+            role=EventRole.PARTICIPANT,
+        )
+
+        audit.record(actor, 'team.create', team, {
+            'event_slug': team.event.slug,
+            'name': team.name,
+            'external_id': team.external_id,
+        })
 
     return team
 
@@ -67,25 +77,34 @@ def join_team(actor, team_id, code):
     """
     require(actor, not actor.is_anonymous)
 
-    try:
-        team = Team.objects.get(id=team_id)
-    except Team.DoesNotExist:
-        raise ValueError("Team not found.")
+    from django.db import transaction
+    from services import audit
 
-    if team.invite_code != code:
-        raise ValueError("Invalid invite code.")
+    with transaction.atomic():
+        try:
+            team = Team.objects.select_for_update().get(id=team_id)
+        except Team.DoesNotExist:
+            raise ValueError("Team not found.")
 
-    membership, created = TeamMembership.objects.get_or_create(
-        team=team,
-        user=actor.user,
-    )
+        if team.invite_code != code:
+            raise ValueError("Invalid invite code.")
 
-    if created:
-        # Ensure the joiner has a PARTICIPANT membership for the event
-        EventMembership.objects.get_or_create(
-            event=team.event,
+        membership, created = TeamMembership.objects.get_or_create(
+            team=team,
             user=actor.user,
-            role=EventRole.PARTICIPANT,
         )
+
+        if created:
+            # Ensure the joiner has a PARTICIPANT membership for the event
+            EventMembership.objects.get_or_create(
+                event=team.event,
+                user=actor.user,
+                role=EventRole.PARTICIPANT,
+            )
+
+        audit.record(actor, 'team.join', team, {
+            'team_name': team.name,
+            'user_id': actor.user.pk,
+        })
 
     return membership

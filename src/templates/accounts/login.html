@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Log In — Rubric{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 440px; margin: var(--space-xl) auto; padding: 0 var(--space-md);">
+  <div class="card" style="padding: var(--space-xl); background: #ffffff; border: 1px solid var(--border-color, #e2e8f0); border-radius: var(--radius-md, 8px);">
+    <div style="margin-bottom: var(--space-lg); text-align: center;">
+      <h1 style="font-size: 1.5rem; font-weight: 700; margin: 0 0 6px 0;" id="login-title">
+        Sign In to Rubric
+      </h1>
+      <p style="color: var(--text-secondary, #64748b); font-size: 0.875rem; margin: 0;">
+        Enter your credentials to access your account.
+      </p>
+    </div>
+
+    {% if error %}
+      <div id="login-error" style="background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 10px 14px; border-radius: 6px; font-size: 0.875rem; margin-bottom: var(--space-md);">
+        {{ error }}
+      </div>
+    {% endif %}
+
+    <form method="POST" action="/login" id="login-form">
+      {% csrf_token %}
+      {% if request.GET.next %}
+        <input type="hidden" name="next" value="{{ request.GET.next }}">
+      {% endif %}
+
+      <div style="margin-bottom: var(--space-md);">
+        <label for="id_email" style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 4px;">
+          Email address
+        </label>
+        <input
+          type="email"
+          name="email"
+          id="id_email"
+          required
+          value="{{ email|default:'' }}"
+          placeholder="you@example.com"
+          style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px; font-size: 0.9375rem; box-sizing: border-box;"
+        >
+      </div>
+
+      <div style="margin-bottom: var(--space-lg);">
+        <label for="id_password" style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 4px;">
+          Password
+        </label>
+        <input
+          type="password"
+          name="password"
+          id="id_password"
+          required
+          placeholder="Your password"
+          style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px; font-size: 0.9375rem; box-sizing: border-box;"
+        >
+      </div>
+
+      <button
+        type="submit"
+        id="btn-login"
+        class="btn btn-primary"
+        style="width: 100%; padding: 10px; font-size: 0.9375rem; font-weight: 600;"
+      >
+        Sign In
+      </button>
+    </form>
+
+    <div style="margin-top: var(--space-lg); text-align: center; font-size: 0.875rem; color: var(--text-secondary, #64748b);">
+      Don't have an account? <a href="/accounts/register" style="color: var(--accent, #0284c7); font-weight: 600;">Register</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

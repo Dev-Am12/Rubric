@@ -453,6 +453,21 @@ def run(actor, target_k=None, allow_disconnected_ranking=False):
             judge_graph_fiedler_value=component_fiedler.get(component_id) if component_id else None,
         ))
     NormalizedScore.objects.bulk_create(normalized_rows)
+
+    from services import audit
+    audit.record(
+        actor=actor,
+        action='normalization.run',
+        target=run_record,
+        payload={
+            'target_k': target,
+            'target_k_source': target_source,
+            'allow_disconnected_ranking': bool(allow_disconnected_ranking),
+            'component_count': len(components),
+            'scores_count': len(normalized_rows),
+        },
+    )
+
     return run_record
 
 
