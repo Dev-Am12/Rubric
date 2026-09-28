@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Create Team — {{ event.name }} — Rubric{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 2rem auto; padding: 0 1rem;">
+  <div style="background: var(--card-bg, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 12px; padding: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div style="margin-bottom: 1.5rem;">
+      <a href="/" style="font-size: 0.875rem; color: var(--text-secondary, #64748b); text-decoration: none;">&larr; Back to Home</a>
+      <h1 style="font-size: 1.75rem; font-weight: 700; margin: 0.5rem 0 0.25rem 0; color: var(--text-primary, #0f172a);">Create a New Team</h1>
+      <p style="margin: 0; color: var(--text-secondary, #64748b); font-size: 0.9375rem;">
+        Event: <strong>{{ event.name }}</strong>
+      </p>
+    </div>
+
+    {% if error_message %}
+      <div style="background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 0.875rem 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.9375rem;">
+        {{ error_message }}
+      </div>
+    {% endif %}
+
+    <form method="POST" action="/teams/new">
+      {% csrf_token %}
+      <div style="margin-bottom: 1.5rem;">
+        <label for="name" style="display: block; font-size: 0.875rem; font-weight: 600; color: var(--text-primary, #0f172a); margin-bottom: 0.5rem;">
+          Team Name <span style="color: #ef4444;">*</span>
+        </label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          required
+          placeholder="e.g. Algorithmic Avengers"
+          style="width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border-color, #cbd5e1); border-radius: 8px; font-size: 1rem; box-sizing: border-box;"
+        >
+        <p style="margin: 0.375rem 0 0 0; font-size: 0.8125rem; color: var(--text-secondary, #64748b);">
+          You will automatically become the first member and team admin. An invite link will be generated once created.
+        </p>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <a href="/" class="btn" style="padding: 0.625rem 1.25rem; border: 1px solid var(--border-color, #cbd5e1); border-radius: 8px; text-decoration: none; color: var(--text-secondary, #475569); font-weight: 500;">Cancel</a>
+        <button type="submit" class="btn btn-primary" style="padding: 0.625rem 1.5rem; background: var(--accent, #2563eb); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+          Create Team
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

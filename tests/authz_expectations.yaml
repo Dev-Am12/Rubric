@@ -322,4 +322,48 @@ organizer_event_make_current:
   note: >
     Organizer action to explicitly switch the active/current event across the portal.
 
+# -----------------------------------------------------------------------
+# G5.8 Team invite links and judge invitation routes
+# -----------------------------------------------------------------------
+organizer_judges:
+  declared: true
+  path: /organizer/judges
+  method: GET, POST
+  auth: organizer
+  note: >
+    Organizer page to manage judges, issue 14-day one-time invite links by email + tracks.
+
+judge_invite_accept:
+  declared: true
+  path: /invite/judge/{token}
+  method: GET, POST
+  auth: public
+  note: >
+    Judge invitation acceptance flow requiring matching authenticated email.
+
+team_create:
+  declared: true
+  path: /teams/new
+  method: GET, POST
+  auth: public
+  note: >
+    Team creation endpoint (redirects anonymous to login with safe next parameter).
+
+team_join:
+  declared: true
+  path: /teams/join/{code}
+  method: GET
+  auth: public
+  note: >
+    Team invite link join endpoint (redirects anonymous to login with safe next parameter).
+
+team_detail:
+  declared: true
+  path: /teams/{id}
+  method: GET
+  auth: public
+  note: >
+    Team detail view displaying members and members-only invite link.
+
+
 

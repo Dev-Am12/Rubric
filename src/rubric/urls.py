@@ -30,6 +30,8 @@ from judging.views_organizer import (
     organizer_normalization_view,
     organizer_audit_log_page_view,
     organizer_rubric_view,
+    organizer_judges_view,
+    judge_invite_accept_view,
 )
 from events.views import landing_page_view
 from events.views_organizer import (
@@ -40,6 +42,11 @@ from events.views_organizer import (
     organizer_event_prizes_view,
     organizer_event_prize_edit_view,
     organizer_event_make_current_view,
+)
+from teams.views import (
+    team_create_view,
+    team_join_view,
+    team_detail_view,
 )
 from submissions.views import (
     gallery_view,
@@ -75,6 +82,15 @@ urlpatterns = [
     path('organizer/events/<int:event_id>/prizes', organizer_event_prizes_view, name='organizer_event_prizes'),
     path('organizer/events/<int:event_id>/prizes/<int:prize_id>', organizer_event_prize_edit_view, name='organizer_event_prize_edit'),
     path('organizer/events/<int:event_id>/make-current', organizer_event_make_current_view, name='organizer_event_make_current'),
+    path('organizer/judges', organizer_judges_view, name='organizer_judges'),
+    path('invite/judge/<str:token>', judge_invite_accept_view, name='judge_invite_accept'),
+
+    # -----------------------------------------------------------------------
+    # Teams UI routes (UX.md §1, API.md §2)
+    # -----------------------------------------------------------------------
+    path('teams/new', team_create_view, name='team_create'),
+    path('teams/join/<str:code>', team_join_view, name='team_join'),
+    path('teams/<int:id>', team_detail_view, name='team_detail'),
 
     # -----------------------------------------------------------------------
     # Accounts UI routes (UX.md §1, API.md §3)

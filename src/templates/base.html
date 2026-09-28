@@ -30,10 +30,12 @@
         {% if request.actor and request.actor.is_organizer %}
           <li><a href="/organizer" id="nav-organizer-dashboard">Dashboard</a></li>
           <li><a href="/organizer/events" id="nav-organizer-events">Events</a></li>
+          <li><a href="/organizer/judges" id="nav-organizer-judges">Judges</a></li>
           <li><a href="/organizer/progress" id="nav-organizer-progress">Progress</a></li>
           <li><a href="/organizer/rubric" id="nav-organizer-rubric">Rubric</a></li>
           <li><a href="/organizer/audit-log" id="nav-organizer-audit">Audit Log</a></li>
         {% endif %}
+        <li><a href="/teams/new" id="nav-team-new">Create Team</a></li>
         <li><a href="/projects/new" id="nav-submit" class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;">Submit Project</a></li>
       </ul>
 

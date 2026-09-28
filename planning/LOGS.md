@@ -325,4 +325,43 @@ un.py T1/T2 check. Temporary database and server log files were removed afterwar
   - SQLite: 189 tests passed, 0 failures, 0 errors (1 skipped).
   - PostgreSQL: 189 tests passed, 0 failures, 0 errors (0 skipped).
 
+## 2026-09-28 — G5.8: Team invite links (T1) and judge invitation (T2)
+
+- Team invite links and join flow (`src/teams/services.py`, `src/services/teams.py`, `src/teams/views.py`, `src/templates/teams/`):
+  - Added team creation view (`/teams/new`) rendering team creation form; on submission, creates team and redirects to `/teams/<id>?created=1` displaying the invite link (`/teams/join/<code>`).
+  - Added team join by code view (`/teams/join/<code>`): anonymous visitors are redirected to `/login?next=/teams/join/<code>` with safe next validation; authenticated users call `services.teams.join_by_code(actor, code)`, enroll as `EventMembership(PARTICIPANT)` on the event if needed, record `team.join` in the audit log, and redirect to `/teams/<id>?joined=1`.
+  - Duplicate membership rejection & idempotency: `services.teams.join_team` and `join_by_code` verify `TeamMembership.objects.filter(team=team, user=actor.user).exists()` and raise `ValueError("User is already a member of this team.")`. The HTTP join view handles repeat visits idempotently by catching the condition and redirecting existing members to `/teams/<id>?already_member=1` without duplicating DB records or audit entries.
+  - Team detail view (`/teams/<id>`): displays team name, event, created timestamp, and member roster with roles (`Creator` / `Member`). Invite link banner and copy box are rendered conditionally: visible ONLY to team members and event organizers; non-member participants and anonymous visitors cannot see the invite code or join URL.
+  - Identified schema gap (max team size): Inspected `Event` model; `Event` currently has no `max_team_size` field. Per instructions ("Enforce a max team size of 4 only if the Event model already has such a field; otherwise log the gap in LOGS, don't add one"), no field was added to `Event`, and this gap is logged here.
+- Offline judge invitation system (`src/judging/models.py`, `src/services/judging.py`, `src/judging/views_organizer.py`, `src/templates/organizer/judges.html`, `src/templates/judging/invite_error.html`):
+  - Added `JudgeInvite` model (`judging.0005_judge_invite` migration): fields `event`, `email`, `token_hash`, `tracks` (ManyToMany to `Track`), `created_at`, `expires_at` (14 days), `accepted_at`, `created_by`.
+  - Token generation & cryptographic verification: tokens are generated as 32-byte URL-safe strings (`secrets.token_urlsafe(32)`), stored hashed via SHA-256 (`token_hash`), never stored in plaintext, and verified using constant-time comparison (`hmac.compare_digest`).
+  - Organizer judge management (`/organizer/judges`): lists pending and accepted judge invitations for the current event with assigned tracks; provides form to invite a judge by email with track selection; displays the single-use invite link (`/invite/judge/<token>`) ONCE upon creation with a copy-to-clipboard button.
+  - Judge acceptance flow (`/invite/judge/<token>`): requires a logged-in user; redirects anonymous users to login with safe `next`; validates token validity, 14-day expiration, and single-use status; enforces strict email matching (`actor.user.email.lower() == invite.email.lower()`, rejecting mismatches with HTTP 403 Forbidden).
+  - Role & track eligibility provisioning: upon valid acceptance, creates or updates `EventMembership(event=event, user=user, role=EventRole.JUDGE)`, creates `JudgeTrackEligibility` records for each track attached to the invite, marks `accepted_at=timezone.now()`, and redirects to `/judge/queue?accepted=1`.
+  - Audit logging: records `judge.invite_created` and `judge.invite_accepted` in active atomic transactions; raw tokens and token hashes are never exposed in audit payloads.
+- Route authorization declarations:
+  - Registered `team_create`, `team_join`, `team_detail`, `organizer_judges`, `judge_invite_accept` in `src/rubric/urls.py`.
+  - Declared all 5 routes in `tests/authz_expectations.yaml`.
+  - Updated `src/templates/base.html` navigation to link `Create Team` (authenticated participants) and `Judges` (organizers).
+  - `tests/test_auth_policy.py`: 30/30 tests pass.
+- Test coverage (`tests/test_g5_step8.py`):
+  - 16 comprehensive tests verifying:
+    - Token generation, hashing, 14-day expiry, and token-free audit logging.
+    - Rejection of expired tokens (HTTP 400 & `ValueError`).
+    - Rejection of already-accepted tokens (HTTP 400 & `ValueError`).
+    - Rejection of wrong-email users (HTTP 403 & `PermissionDenied`).
+    - Rejection of tampered tokens (HTTP 404).
+    - Rejection of cross-event tokens (HTTP 404).
+    - Self-promotion prevention: non-invited user cannot self-promote.
+    - Role-based access control: anonymous (401), participants (403), and judges (403) blocked from `/organizer/judges`; organizers allowed (200).
+    - Full end-to-end judge onboarding path: organizer invite -> link shown once -> anon redirected to login/register -> registration with matching email -> acceptance -> `EventMembership(JUDGE)` and `JudgeTrackEligibility` created -> access to `/judge/queue`.
+    - Team creation, members/organizers-only link visibility, anonymous redirect with safe next, authenticated join, and idempotency / duplicate rejection.
+- Live acceptance report:
+  - `run.py .dogfood.toml` executed live against local server: all checks PASS (T1 and T2 verified).
+- Full test suite results:
+  - SQLite (default): 205 tests passed, 0 failures, 0 errors (1 skipped).
+  - PostgreSQL (`postgresql://rubric:rubric_dev_only@localhost:5432/rubric_dev`): 205 tests passed, 0 failures, 0 errors (0 skipped).
+
+
 

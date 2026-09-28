@@ -13,14 +13,18 @@ Design reference:
 
 from collections import defaultdict
 
-from django.http import HttpResponse
-from django.shortcuts import redirect, render
+from django.http import Http404, HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
-from accounts.actors import PermissionDenied
+from accounts.actors import PermissionDenied, require
+from accounts.models import EventMembership, EventRole
 from events.models import Track
-from judging.models import AssignmentRun, NormalizationRun
+from events.services import current_event
+from judging.models import AssignmentRun, NormalizationRun, JudgeInvite
 from services import assignment as assignment_services
+from services import judging as judging_services
 from services import normalization as norm_services
 from services import submissions as submission_services
 from submissions.models import Project, ProjectStatus
@@ -412,5 +416,136 @@ def organizer_rubric_view(request):
     }
     status_code = 400 if error else 200
     return render(request, 'organizer/rubric.html', context, status=status_code)
+
+
+@require_http_methods(['GET', 'POST'])
+def organizer_judges_view(request):
+    """
+    Organizer judges management page (/organizer/judges).
+    Lists invited and accepted judges for the active event.
+    Provides a form to invite a judge by email + tracks.
+    Shows the generated invite link ONCE upon creation.
+    """
+    if not (request.actor.is_organizer or getattr(request.actor, 'is_site_admin', False)):
+        raise PermissionDenied
+
+    event = getattr(request.actor, 'event', None) or current_event()
+    if not event:
+        raise Http404("No active event found.")
+
+    new_invite_url = None
+    new_invite_email = None
+    error_message = None
+
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+        track_ids = request.POST.getlist('tracks')
+
+        try:
+            invite, raw_token = judging_services.create_judge_invite(
+                actor=request.actor,
+                event=event,
+                email=email,
+                track_ids=track_ids,
+            )
+            new_invite_url = request.build_absolute_uri(
+                reverse('judge_invite_accept', args=[raw_token])
+            )
+            new_invite_email = email
+        except ValueError as exc:
+            error_message = str(exc)
+
+    invites = list(
+        JudgeInvite.objects.filter(event=event)
+        .select_related('created_by')
+        .prefetch_related('tracks')
+        .order_by('-created_at')
+    )
+
+    accepted_judges = list(
+        EventMembership.objects.filter(event=event, role=EventRole.JUDGE)
+        .select_related('user')
+        .prefetch_related('track_eligibilities__track')
+        .order_by('user__email')
+    )
+
+    tracks = list(event.tracks.all().order_by('name'))
+
+    context = {
+        'event': event,
+        'invites': invites,
+        'accepted_judges': accepted_judges,
+        'tracks': tracks,
+        'new_invite_url': new_invite_url,
+        'new_invite_email': new_invite_email,
+        'error_message': error_message,
+    }
+    return render(request, 'organizer/judges.html', context)
+
+
+@require_http_methods(['GET', 'POST'])
+def judge_invite_accept_view(request, token):
+    """
+    Accept flow for judge invitations (/invite/judge/<token>).
+    1. If anonymous: redirects to /login?next=/invite/judge/<token> (or register).
+    2. Verifies token validity, event matching, expiry, and already-used state.
+    3. Requires logged-in user whose email matches the invitation email.
+    4. Upon acceptance, creates EventMembership(JUDGE) and JudgeTrackEligibility rows,
+       audit-logs the acceptance, and redirects to /judge/queue.
+    """
+    if request.actor.is_anonymous:
+        login_url = reverse('login')
+        next_path = reverse('judge_invite_accept', args=[token])
+        return redirect(f"{login_url}?next={next_path}")
+
+    invite = judging_services.get_judge_invite(token)
+    if not invite:
+        return render(request, 'judging/invite_error.html', {
+            'error_title': 'Invalid Invitation Link',
+            'error_message': 'The judge invitation token is invalid or has been corrupted.',
+        }, status=404)
+
+    curr_event = current_event()
+    if curr_event and invite.event_id != curr_event.pk:
+        return render(request, 'judging/invite_error.html', {
+            'error_title': 'Cross-Event Invitation',
+            'error_message': 'This judge invitation is for a different event than the currently active event.',
+        }, status=400)
+
+    if invite.is_expired():
+        return render(request, 'judging/invite_error.html', {
+            'error_title': 'Invitation Expired',
+            'error_message': 'This judge invitation has expired (exceeded 14-day validity).',
+        }, status=400)
+
+    if invite.is_accepted():
+        return render(request, 'judging/invite_error.html', {
+            'error_title': 'Already Accepted',
+            'error_message': f'This judge invitation was already accepted on {invite.accepted_at.strftime("%Y-%m-%d %H:%M UTC")}.',
+        }, status=400)
+
+    # Check email match
+    user_email = request.actor.user.email.strip().lower()
+    invite_email = invite.email.strip().lower()
+    if user_email != invite_email:
+        return render(request, 'judging/invite_error.html', {
+            'error_title': 'Email Mismatch',
+            'error_message': (
+                f"This invitation was issued to '{invite.email}', but you are logged in as "
+                f"'{request.actor.user.email}'. Please log out and log in or register with "
+                f"'{invite.email}' to accept this invitation."
+            ),
+        }, status=403)
+
+    # Accept the invite
+    try:
+        judging_services.accept_judge_invite(request.actor, token)
+        return redirect(f"{reverse('judge_queue')}?accepted=1")
+    except (ValueError, PermissionDenied) as exc:
+        return render(request, 'judging/invite_error.html', {
+            'error_title': 'Error Accepting Invitation',
+            'error_message': str(exc),
+        }, status=400)
+
 
 

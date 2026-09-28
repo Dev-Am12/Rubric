@@ -1,10 +1,22 @@
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
+import hashlib
+import hmac
+import secrets
 
 from django.db import transaction
 from django.utils import timezone
 
-from accounts.actors import PermissionDenied
-from judging.models import Ballot, BallotScore, JudgeAssignment, AssignmentStatus
+from accounts.actors import require, PermissionDenied
+from accounts.models import EventMembership, EventRole, JudgeTrackEligibility
+from events.services import current_event
+from judging.models import (
+    Ballot,
+    BallotScore,
+    JudgeAssignment,
+    AssignmentStatus,
+    JudgeInvite,
+)
 from submissions.models import Project
 
 
@@ -351,3 +363,136 @@ def configure_rubric(actor, criteria):
     )
 
     return rubric
+
+
+def create_judge_invite(actor, event, email, track_ids=None):
+    """
+    Create a new judge invitation (organizer only).
+    Generates a secure random 32-byte token, stores its SHA-256 hash with a
+    14-day expiry, associates optional track eligibilities, and audit-logs the creation.
+    Never logs the raw token or token hash.
+    Returns (invite, raw_token).
+    """
+    require(actor, actor.is_organizer or getattr(actor, 'is_site_admin', False))
+
+    email = (email or '').strip().lower()
+    if not email or '@' not in email:
+        raise ValueError("A valid email address is required for judge invitation.")
+
+    raw_token = secrets.token_urlsafe(32)
+    token_hash = JudgeInvite.hash_token(raw_token)
+    expires_at = timezone.now() + timedelta(days=14)
+
+    with transaction.atomic():
+        invite = JudgeInvite.objects.create(
+            event=event,
+            email=email,
+            token_hash=token_hash,
+            expires_at=expires_at,
+            created_by=actor.user,
+        )
+
+        if track_ids:
+            tracks = list(event.tracks.filter(pk__in=track_ids))
+            invite.tracks.set(tracks)
+
+        from services import audit
+        audit.record(
+            actor=actor,
+            action='judge.invite_created',
+            target=invite,
+            payload={
+                'email': email,
+                'event_id': event.pk,
+                'event_slug': event.slug,
+                'track_ids': [t.pk for t in invite.tracks.all()],
+                'expires_at': expires_at.isoformat(),
+            },
+        )
+
+    return invite, raw_token
+
+
+def get_judge_invite(raw_token):
+    """
+    Retrieve a JudgeInvite by raw token using constant-time comparison.
+    Returns the JudgeInvite instance or None.
+    """
+    if not raw_token or not isinstance(raw_token, str):
+        return None
+
+    token_hash = JudgeInvite.hash_token(raw_token)
+    try:
+        invite = JudgeInvite.objects.select_related('event', 'created_by').prefetch_related('tracks').get(
+            token_hash=token_hash,
+        )
+    except JudgeInvite.DoesNotExist:
+        return None
+
+    if not hmac.compare_digest(invite.token_hash, token_hash):
+        return None
+
+    return invite
+
+
+def accept_judge_invite(actor, raw_token):
+    """
+    Accept a judge invitation.
+    Requires an authenticated user whose email matches the invitation.
+    Verifies token validity, event currency, non-expiration, and non-acceptance.
+    Creates EventMembership(role=JUDGE) and JudgeTrackEligibility rows.
+    Audit-logs the acceptance.
+    """
+    require(actor, not actor.is_anonymous)
+
+    invite = get_judge_invite(raw_token)
+    if not invite:
+        raise ValueError("Invalid invitation token.")
+
+    curr = current_event()
+    if curr and invite.event_id != curr.pk:
+        raise ValueError("Invitation is for a different event than the active event.")
+
+    if invite.is_expired():
+        raise ValueError("This invitation has expired.")
+
+    if invite.is_accepted():
+        raise ValueError("This invitation has already been accepted.")
+
+    if actor.user.email.strip().lower() != invite.email.strip().lower():
+        raise PermissionDenied(
+            f"This invitation was sent to '{invite.email}'. "
+            f"You are logged in as '{actor.user.email}'."
+        )
+
+    with transaction.atomic():
+        invite.accepted_at = timezone.now()
+        invite.save(update_fields=['accepted_at'])
+
+        membership, _ = EventMembership.objects.get_or_create(
+            event=invite.event,
+            user=actor.user,
+            role=EventRole.JUDGE,
+        )
+
+        for track in invite.tracks.all():
+            JudgeTrackEligibility.objects.get_or_create(
+                event_membership=membership,
+                track=track,
+            )
+
+        from services import audit
+        audit.record(
+            actor=actor,
+            action='judge.invite_accepted',
+            target=invite,
+            payload={
+                'email': invite.email,
+                'event_id': invite.event_id,
+                'user_id': actor.user.pk,
+                'accepted_at': invite.accepted_at.isoformat(),
+            },
+        )
+
+    return membership
+

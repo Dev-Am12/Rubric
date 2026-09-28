@@ -73,7 +73,7 @@ def join_team(actor, team_id, code):
     Join an existing team by providing the correct invite code.
 
     Any registered (non-anonymous) user can join a team if they provide
-    the correct invite code.
+    the correct invite code. Rejects duplicate membership.
     """
     require(actor, not actor.is_anonymous)
 
@@ -89,18 +89,20 @@ def join_team(actor, team_id, code):
         if team.invite_code != code:
             raise ValueError("Invalid invite code.")
 
-        membership, created = TeamMembership.objects.get_or_create(
+        if TeamMembership.objects.filter(team=team, user=actor.user).exists():
+            raise ValueError("User is already a member of this team.")
+
+        membership = TeamMembership.objects.create(
             team=team,
             user=actor.user,
         )
 
-        if created:
-            # Ensure the joiner has a PARTICIPANT membership for the event
-            EventMembership.objects.get_or_create(
-                event=team.event,
-                user=actor.user,
-                role=EventRole.PARTICIPANT,
-            )
+        # Ensure the joiner has a PARTICIPANT membership for the event
+        EventMembership.objects.get_or_create(
+            event=team.event,
+            user=actor.user,
+            role=EventRole.PARTICIPANT,
+        )
 
         audit.record(actor, 'team.join', team, {
             'team_name': team.name,
@@ -108,3 +110,44 @@ def join_team(actor, team_id, code):
         })
 
     return membership
+
+
+def join_by_code(actor, code):
+    """
+    Join an existing team by invite code directly (SCHEMA.md §1.1, API.md §2).
+    Rejects duplicate membership.
+    """
+    require(actor, not actor.is_anonymous)
+
+    from django.db import transaction
+    from services import audit
+
+    with transaction.atomic():
+        try:
+            team = Team.objects.select_for_update().get(invite_code=code)
+        except Team.DoesNotExist:
+            raise ValueError("Invalid invite code.")
+
+        if TeamMembership.objects.filter(team=team, user=actor.user).exists():
+            raise ValueError("User is already a member of this team.")
+
+        membership = TeamMembership.objects.create(
+            team=team,
+            user=actor.user,
+        )
+
+        # Ensure the joiner has a PARTICIPANT membership for the event
+        EventMembership.objects.get_or_create(
+            event=team.event,
+            user=actor.user,
+            role=EventRole.PARTICIPANT,
+        )
+
+        audit.record(actor, 'team.join', team, {
+            'team_name': team.name,
+            'user_id': actor.user.pk,
+            'invite_code': code,
+        })
+
+    return membership
+

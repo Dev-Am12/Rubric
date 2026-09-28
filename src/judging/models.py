@@ -102,3 +102,48 @@ class AssignmentRun(models.Model):
     class Meta:
         db_table = 'judging_assignmentrun'
         ordering = ['id']
+
+
+class JudgeInvite(models.Model):
+    event = models.ForeignKey(
+        'events.Event',
+        on_delete=models.CASCADE,
+        related_name='judge_invites',
+    )
+    email = models.EmailField(max_length=255)
+    token_hash = models.CharField(max_length=64, unique=True, db_index=True)
+    tracks = models.ManyToManyField(
+        'events.Track',
+        blank=True,
+        related_name='judge_invites',
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField()
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_judge_invites',
+    )
+
+    class Meta:
+        db_table = 'judging_judgeinvite'
+        ordering = ['-created_at']
+
+    @classmethod
+    def hash_token(cls, raw_token: str) -> str:
+        import hashlib
+        return hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
+
+    def is_expired(self) -> bool:
+        return timezone.now() > self.expires_at
+
+    def is_accepted(self) -> bool:
+        return self.accepted_at is not None
+
+    def __str__(self):
+        status = "Accepted" if self.accepted_at else ("Expired" if self.is_expired() else "Pending")
+        return f"JudgeInvite({self.email} - {self.event.slug} - {status})"
+
