@@ -167,3 +167,20 @@ def require(actor, condition, status=403):
     """
     if not condition:
         raise PermissionDenied()
+
+
+def require_event_role(actor, event, role):
+    """Require a role on the specified event; site administrators are allowed."""
+    if not actor.is_anonymous and actor.is_site_admin:
+        return
+    event_id = getattr(event, 'pk', event)
+    allowed = (
+        not actor.is_anonymous
+        and actor.user is not None
+        and EventMembership.objects.filter(
+            user=actor.user,
+            event_id=event_id,
+            role=role,
+        ).exists()
+    )
+    require(actor, allowed)

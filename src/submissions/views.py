@@ -16,11 +16,13 @@ from django.utils import timezone
 from django.urls import reverse
 from django.utils.http import urlencode
 
-from accounts.actors import PermissionDenied, require
+from accounts.actors import PermissionDenied, require, require_event_role
+from accounts.models import EventRole
 from events.models import Event, Track
 from events.services import current_event
 from submissions.models import Project, ProjectStatus
 from submissions import services as submissions_services
+from submissions.url_validation import validate_external_url
 from teams.models import Team, TeamMembership
 from services import voting as voting_services
 
@@ -29,6 +31,14 @@ def _is_team_member(actor, team):
     if actor.is_anonymous:
         return False
     return TeamMembership.objects.filter(team=team, user=actor.user).exists()
+
+
+def _is_event_organizer(actor, event):
+    try:
+        require_event_role(actor, event, EventRole.ORGANIZER)
+    except PermissionDenied:
+        return False
+    return True
 
 
 def gallery_view(request):
@@ -78,7 +88,7 @@ def project_detail_view(request, id):
     is_org = False
     if not request.actor.is_anonymous:
         is_owner = _is_team_member(request.actor, project.team)
-        is_org = request.actor.is_organizer or request.actor.is_site_admin
+        is_org = _is_event_organizer(request.actor, project.event)
 
     voting_open = voting_services.voting_is_open(project.event)
     is_eligible_for_public_action = (
@@ -126,7 +136,7 @@ def submit_view(request):
         user_teams = list(Team.objects.filter(memberships__user=request.actor.user))
 
     event = getattr(request.actor, 'event', None) or current_event()
-    is_org = request.actor.is_organizer or request.actor.is_site_admin
+    is_org = _is_event_organizer(request.actor, event) if event else False
     is_closed = bool(event and event.submissions_close_at and timezone.now() > event.submissions_close_at)
 
     if request.method == 'POST':
@@ -138,6 +148,13 @@ def submit_view(request):
                 return JsonResponse({'error': 'bad_request', 'detail': 'Invalid JSON'}, status=400)
 
             require(request.actor, not request.actor.is_anonymous)
+
+            try:
+                repo_url = validate_external_url('repo_url', data.get('repo_url', ''))
+                demo_video_url = validate_external_url('demo_video_url', data.get('demo_video_url', ''))
+                live_url = validate_external_url('live_url', data.get('live_url', ''))
+            except ValueError as exc:
+                return JsonResponse({'error': 'invalid_request', 'detail': str(exc)}, status=400)
 
             team_id = data.get('team') or data.get('team_id')
             if team_id:
@@ -174,19 +191,22 @@ def submit_view(request):
             if isinstance(tags, str):
                 tags = [t.strip() for t in tags.split(',') if t.strip()]
 
-            project = submissions_services.create(
-                request.actor,
-                team=team,
-                track=track,
-                title=data.get('title', ''),
-                summary=data.get('summary', ''),
-                description=data.get('description', ''),
-                repo_url=data.get('repo_url', ''),
-                demo_video_url=data.get('demo_video_url', ''),
-                live_url=data.get('live_url', ''),
-                tech_tags=tags,
-                custom_answers=data.get('custom_answers', {}),
-            )
+            try:
+                project = submissions_services.create(
+                    request.actor,
+                    team=team,
+                    track=track,
+                    title=data.get('title', ''),
+                    summary=data.get('summary', ''),
+                    description=data.get('description', ''),
+                    repo_url=repo_url,
+                    demo_video_url=demo_video_url,
+                    live_url=live_url,
+                    tech_tags=tags,
+                    custom_answers=data.get('custom_answers', {}),
+                )
+            except ValueError as exc:
+                return JsonResponse({'error': 'invalid_request', 'detail': str(exc)}, status=400)
             return JsonResponse({
                 'id': project.id,
                 'title': project.title,
@@ -243,6 +263,14 @@ def submit_view(request):
                     'tracks': Track.objects.filter(event=event).order_by('name') if event else [],
                 }, status=403)
             raise
+        except ValueError as exc:
+            return render(request, 'submissions/project_form.html', {
+                'is_new': True,
+                'error_message': str(exc),
+                'event': event,
+                'teams': user_teams,
+                'tracks': Track.objects.filter(event=event).order_by('name') if event else [],
+            }, status=400)
 
         if request.headers.get('HX-Request'):
             response = HttpResponse(status=204)
@@ -276,7 +304,7 @@ def project_edit_view(request, id):
         raise Http404("Project not found.")
 
     event = project.event
-    is_org = request.actor.is_organizer or request.actor.is_site_admin
+    is_org = _is_event_organizer(request.actor, event)
     is_closed = bool(event.submissions_close_at and timezone.now() > event.submissions_close_at)
 
     if request.method == 'POST':
@@ -316,6 +344,15 @@ def project_edit_view(request, id):
                     return render(request, 'submissions/partials/form_closed_alert.html', context, status=403)
                 return render(request, 'submissions/project_form.html', context, status=403)
             raise
+        except ValueError as exc:
+            context = {
+                'project': project,
+                'is_new': False,
+                'closed': False,
+                'error_message': str(exc),
+                'event': event,
+            }
+            return render(request, 'submissions/project_form.html', context, status=400)
 
         if request.headers.get('HX-Request'):
             response = HttpResponse(status=204)

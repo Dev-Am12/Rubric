@@ -10,8 +10,8 @@ from django.db import IntegrityError, connections, transaction
 from django.db.models import Count
 from django.utils import timezone
 
-from accounts.actors import PermissionDenied, require
-from accounts.models import EventMembership, EventRole
+from accounts.actors import PermissionDenied, require, require_event_role
+from accounts.models import EventRole
 from events.models import Event, VotingAccess
 from submissions.models import Project, ProjectStatus
 from voting.models import Comment, Vote, VoteAttempt, VoteAttemptOutcome, VoteMode
@@ -69,15 +69,11 @@ def _mode(event):
 
 
 def _organizer_for(actor, event):
-    if actor.is_anonymous:
+    try:
+        require_event_role(actor, event, EventRole.ORGANIZER)
+    except PermissionDenied:
         return False
-    if actor.is_site_admin:
-        return True
-    if getattr(getattr(actor, 'event', None), 'pk', None) == event.pk:
-        return actor.is_organizer
-    return EventMembership.objects.filter(
-        user=actor.user, event=event, role=EventRole.ORGANIZER,
-    ).exists()
+    return True
 
 
 def _require_voter(actor, event):

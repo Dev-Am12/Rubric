@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 from django.utils.text import slugify
 
-from accounts.actors import require, PermissionDenied
+from accounts.actors import require, require_event_role, PermissionDenied
 from accounts.models import EventMembership, EventRole
 from events.models import Event, Track, Prize, VotingAccess
 
@@ -156,13 +156,13 @@ def update_event(
     Update an event's name and dates. Organizer-only.
     All changes are audit-logged with before/after state.
     """
-    require(actor, actor.is_organizer or actor.is_site_admin)
     if isinstance(event_or_id, Event):
         event = event_or_id
     elif isinstance(event_or_id, int):
         event = Event.objects.get(pk=event_or_id)
     else:
         event = Event.objects.get(slug=str(event_or_id))
+    require_event_role(actor, event, EventRole.ORGANIZER)
 
     before = {
         'name': event.name,
@@ -257,13 +257,13 @@ def set_current_event(actor, event_or_id):
     Explicitly set an event as the single current event. Organizer-only.
     All changes are audit-logged with before/after state.
     """
-    require(actor, actor.is_organizer or actor.is_site_admin)
     if isinstance(event_or_id, Event):
         target = event_or_id
     elif isinstance(event_or_id, int):
         target = Event.objects.get(pk=event_or_id)
     else:
         target = Event.objects.get(slug=str(event_or_id))
+    require_event_role(actor, target, EventRole.ORGANIZER)
 
     from django.db import transaction
     from services import audit
@@ -306,8 +306,6 @@ def create_track(
       - create_track(actor, event=event, name="Track Name")
       - create_track(actor, "Track Name")  # when actor.event is set
     """
-    require(actor, actor.is_organizer or actor.is_site_admin)
-
     resolved_event = event
     resolved_name = name
 
@@ -337,6 +335,8 @@ def create_track(
 
     if resolved_event is None:
         raise ValueError("Event is required to create a track.")
+
+    require_event_role(actor, resolved_event, EventRole.ORGANIZER)
 
     from django.db import transaction
     from services import audit
@@ -377,8 +377,6 @@ def create_prize(
       - create_prize(actor, event=event, rank_label="1st", description="...")
       - create_prize(actor, "1st")  # when actor.event is set
     """
-    require(actor, actor.is_organizer or actor.is_site_admin)
-
     resolved_event = event
     resolved_rank_label = rank_label
     resolved_description = description
@@ -416,6 +414,8 @@ def create_prize(
     if resolved_event is None:
         raise ValueError("Event is required to create a prize.")
 
+    require_event_role(actor, resolved_event, EventRole.ORGANIZER)
+
     from django.db import transaction
     from services import audit
 
@@ -439,11 +439,11 @@ def update_track(actor, track_or_id, name=None, external_id=Ellipsis):
     Update a track. Organizer-only operation.
     All changes are audit-logged with before/after state.
     """
-    require(actor, actor.is_organizer or actor.is_site_admin)
     if isinstance(track_or_id, Track):
         track = track_or_id
     else:
         track = Track.objects.get(pk=track_or_id)
+    require_event_role(actor, track.event, EventRole.ORGANIZER)
 
     before = {
         'name': track.name,
@@ -479,11 +479,11 @@ def update_prize(actor, prize_or_id, rank_label=None, description=None):
     Update a prize. Organizer-only operation.
     All changes are audit-logged with before/after state.
     """
-    require(actor, actor.is_organizer or actor.is_site_admin)
     if isinstance(prize_or_id, Prize):
         prize = prize_or_id
     else:
         prize = Prize.objects.get(pk=prize_or_id)
+    require_event_role(actor, prize.event, EventRole.ORGANIZER)
 
     before = {
         'rank_label': prize.rank_label,

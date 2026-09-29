@@ -86,6 +86,8 @@ def join_team(actor, team_id, code):
         except Team.DoesNotExist:
             raise ValueError("Team not found.")
 
+        require(actor, getattr(actor.event, 'pk', None) == team.event_id)
+
         if team.invite_code != code:
             raise ValueError("Invalid invite code.")
 
@@ -128,6 +130,8 @@ def join_by_code(actor, code):
         except Team.DoesNotExist:
             raise ValueError("Invalid invite code.")
 
+        require(actor, getattr(actor.event, 'pk', None) == team.event_id)
+
         if TeamMembership.objects.filter(team=team, user=actor.user).exists():
             raise ValueError("User is already a member of this team.")
 
@@ -150,4 +154,3 @@ def join_by_code(actor, code):
         })
 
     return membership
-

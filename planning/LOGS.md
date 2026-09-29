@@ -429,6 +429,15 @@ un.py T1/T2 check. Temporary database and server log files were removed afterwar
   - PostgreSQL: Ran 241 tests in 168.664s, OK.
   - Acceptance runner (`python run.py .dogfood.toml` against live server): all checks PASS (T1 gallery public, fixture projects shown, closed submissions refused; T2 judge sees own scores, peer scores denied, participant blocked, CSV export works). Verified T1 and T2.
 
+## 2026-09-29 — Phase 3.2A: adversarial review fixes
+
+- Findings journal: submission services accepted raw external URLs, allowing unsafe schemes to reach rendered links when writes bypassed forms. Added shared service validation for stripped HTTP/HTTPS URLs and a defensive render filter at every project-link output. Direct ORM corruption now produces no external link.
+- Findings journal: the judge ballot referenced `live_site_url`, which is not a model field. It now renders the `live_url` value.
+- Event-scoped organizer mutations now authorize against the target event membership. Added named tests for event A/B organizer isolation, event switching, judge access isolation, event-bound judge invitations, and team invite codes.
+- Verification: focused and adjacent coverage `Ran 97 tests in 16.427s`, `OK`; full SQLite `Ran 252 tests in 47.691s`, `OK (skipped=1)`; full PostgreSQL `Ran 252 tests in 122.385s`, `OK`; docs consistency and auth policy `Ran 35 tests in 1.477s`, `OK`.
+- Django checks reported no issues, `makemigrations --check --dry-run` reported no changes, and `git diff --check` was clean.
+- Live `run.py .dogfood.toml` against local `runserver 8080` and PostgreSQL: T1 gallery, fixture project, and closed-submission checks PASS; T2 own judge scores, peer-score denial, participant denial, and CSV export PASS. `claimed` remains empty.
+
 
 
 

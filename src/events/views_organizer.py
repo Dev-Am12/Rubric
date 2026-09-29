@@ -3,7 +3,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods, require_POST
 
-from accounts.actors import require
+from accounts.actors import require, require_event_role
+from accounts.models import EventRole
 from events.models import Event, Track, Prize
 from events import services as events_services
 from services import voting as voting_services
@@ -69,8 +70,8 @@ def organizer_event_dates_view(request, event_id):
     Edit event name and dates (/organizer/events/<int:event_id>/dates).
     Validates close > open and rejects naive datetimes.
     """
-    _check_organizer(request.actor)
     event = get_object_or_404(Event, pk=event_id)
+    require_event_role(request.actor, event, EventRole.ORGANIZER)
 
     error_message = None
 
@@ -126,8 +127,8 @@ def organizer_event_tracks_view(request, event_id):
     """
     List and add tracks for an event (/organizer/events/<int:event_id>/tracks).
     """
-    _check_organizer(request.actor)
     event = get_object_or_404(Event, pk=event_id)
+    require_event_role(request.actor, event, EventRole.ORGANIZER)
 
     error_message = None
 
@@ -160,8 +161,8 @@ def organizer_event_track_edit_view(request, event_id, track_id):
     """
     Edit an existing track (/organizer/events/<int:event_id>/tracks/<int:track_id>).
     """
-    _check_organizer(request.actor)
     event = get_object_or_404(Event, pk=event_id)
+    require_event_role(request.actor, event, EventRole.ORGANIZER)
     track = get_object_or_404(Track, pk=track_id, event=event)
 
     name = request.POST.get("name", "").strip() or None
@@ -180,8 +181,8 @@ def organizer_event_prizes_view(request, event_id):
     """
     List and add prizes for an event (/organizer/events/<int:event_id>/prizes).
     """
-    _check_organizer(request.actor)
     event = get_object_or_404(Event, pk=event_id)
+    require_event_role(request.actor, event, EventRole.ORGANIZER)
 
     error_message = None
 
@@ -214,8 +215,8 @@ def organizer_event_prize_edit_view(request, event_id, prize_id):
     """
     Edit an existing prize (/organizer/events/<int:event_id>/prizes/<int:prize_id>).
     """
-    _check_organizer(request.actor)
     event = get_object_or_404(Event, pk=event_id)
+    require_event_role(request.actor, event, EventRole.ORGANIZER)
     prize = get_object_or_404(Prize, pk=prize_id, event=event)
 
     rank_label = request.POST.get("rank_label", "").strip() or None
@@ -235,8 +236,8 @@ def organizer_event_make_current_view(request, event_id):
     Explicit 'make current' action with warning (/organizer/events/<int:event_id>/make-current).
     Changes what the whole portal shows.
     """
-    _check_organizer(request.actor)
     event = get_object_or_404(Event, pk=event_id)
+    require_event_role(request.actor, event, EventRole.ORGANIZER)
 
     events_services.set_current_event(request.actor, event)
 

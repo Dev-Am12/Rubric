@@ -19,11 +19,21 @@ import re
 from django.db import transaction
 from django.utils import timezone
 
-from accounts.actors import require, PermissionDenied
+from accounts.actors import require, require_event_role, PermissionDenied
+from accounts.models import EventRole
 from submissions.models import Project, ProjectStatus
+from submissions.url_validation import URL_FIELDS, validate_external_url
 from teams.models import Team, TeamMembership
 
 logger = logging.getLogger(__name__)
+
+
+def _is_event_organizer(actor, event):
+    try:
+        require_event_role(actor, event, EventRole.ORGANIZER)
+    except PermissionDenied:
+        return False
+    return True
 
 
 def _is_team_member(actor, team):
@@ -47,10 +57,14 @@ def create(actor, team, track, title, summary, description='',
     require(actor, not actor.is_anonymous)
     require(actor, _is_team_member(actor, team))
 
+    repo_url = validate_external_url('repo_url', repo_url)
+    demo_video_url = validate_external_url('demo_video_url', demo_video_url)
+    live_url = validate_external_url('live_url', live_url)
+
     event = team.event
 
     # Deadline check: reject if event submissions are closed (unless organizer)
-    is_org = actor.is_organizer or actor.is_site_admin
+    is_org = _is_event_organizer(actor, event)
     if not is_org:
         if event.submissions_close_at and timezone.now() > event.submissions_close_at:
             raise PermissionDenied()
@@ -105,7 +119,7 @@ def update(actor, project_id, **fields):
             raise ValueError("Project not found.")
 
         is_owner = _is_team_member(actor, project.team)
-        is_org = actor.is_organizer or actor.is_site_admin
+        is_org = _is_event_organizer(actor, project.event)
 
         require(actor, is_owner or is_org)
 
@@ -126,6 +140,8 @@ def update(actor, project_id, **fields):
         updated_keys = []
         for key, value in fields.items():
             if key in allowed_fields:
+                if key in URL_FIELDS:
+                    value = validate_external_url(key, value)
                 setattr(project, key, value)
                 updated_keys.append(key)
 
@@ -367,7 +383,6 @@ def restore_duplicate(actor, project_id):
     Logs an audit entry.
     """
     require(actor, not actor.is_anonymous)
-    require(actor, actor.is_organizer or getattr(actor, 'is_site_admin', False))
 
     from services import audit
 
@@ -379,6 +394,8 @@ def restore_duplicate(actor, project_id):
                 project = Project.objects.select_for_update().get(external_id=str(project_id))
         except Project.DoesNotExist:
             raise ValueError(f"Project not found: {project_id}")
+
+        require_event_role(actor, project.event, EventRole.ORGANIZER)
 
         project.is_duplicate_of = None
         project.duplicate_override = True
@@ -418,9 +435,7 @@ def get(actor, project_id):
 
     # Draft: owner or organizer only
     is_owner = not actor.is_anonymous and _is_team_member(actor, project.team)
-    is_org = not actor.is_anonymous and (
-        actor.is_organizer or actor.is_site_admin
-    )
+    is_org = _is_event_organizer(actor, project.event)
 
     require(actor, is_owner or is_org)
     return project

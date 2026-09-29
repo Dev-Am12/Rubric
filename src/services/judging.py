@@ -7,7 +7,7 @@ import secrets
 from django.db import transaction
 from django.utils import timezone
 
-from accounts.actors import require, PermissionDenied
+from accounts.actors import require, require_event_role, PermissionDenied
 from accounts.models import EventMembership, EventRole, JudgeTrackEligibility
 from events.services import current_event
 from judging.models import (
@@ -251,15 +251,13 @@ def configure_rubric(actor, criteria):
       - Criteria that already have BallotScore rows cannot be deleted.
       - Weight changes are recorded in the audit log with before/after values.
     """
-    if not (actor.is_organizer or getattr(actor, 'is_site_admin', False)):
-        raise PermissionDenied
-
     target_event = getattr(actor, 'event', None)
     if target_event is None:
         from events.services import current_event
         target_event = current_event()
     if target_event is None:
         raise ValueError("An event is required to configure a rubric.")
+    require_event_role(actor, target_event, EventRole.ORGANIZER)
 
     if not criteria or len(criteria) == 0:
         raise ValueError("At least one criterion is required.")
@@ -373,7 +371,7 @@ def create_judge_invite(actor, event, email, track_ids=None):
     Never logs the raw token or token hash.
     Returns (invite, raw_token).
     """
-    require(actor, actor.is_organizer or getattr(actor, 'is_site_admin', False))
+    require_event_role(actor, event, EventRole.ORGANIZER)
 
     email = (email or '').strip().lower()
     if not email or '@' not in email:
@@ -495,4 +493,3 @@ def accept_judge_invite(actor, raw_token):
         )
 
     return membership
-

@@ -29,6 +29,7 @@ that says so explicitly, so the history stays honest.
 - [19. Voter fingerprints minimize stored identity while preserving rate limits](#19-voter-fingerprints-minimize-stored-identity-while-preserving-rate-limits)
 - [20. Voting access mode locks after the first recorded action](#20-voting-access-mode-locks-after-the-first-recorded-action)
 - [21. Organizers can open or close voting immediately with an audit record](#21-organizers-can-open-or-close-voting-immediately-with-an-audit-record)
+- [22. Event authority is scoped to the event being changed](#22-event-authority-is-scoped-to-the-event-being-changed)
 
 ---
 
@@ -244,3 +245,13 @@ To ensure safety against accidental disruption, event creation explicitly leaves
 **Rationale:** Date fields remain useful for scheduling, while an immediate action gives organizers a direct response to a live event. Recording the exact timestamp and actor makes these operational changes reviewable. The submissions deadline remains independent.
 
 **In plain terms:** An organizer can start or stop voting with one action, and the audit history shows when it happened without changing the submission deadline.
+
+---
+
+## 22. Event authority is scoped to the event being changed
+
+**Decision:** Event-scoped organizer actions require an ORGANIZER membership on the target event; site administrators remain allowed. The deployment continues to assume one organization manages the events in this portal. Full multi-tenant URL scoping was considered and rejected for this phase.
+
+**Rationale:** A role attached to the currently selected event must not authorize mutations to a different event. Checking membership against the target closes that gap while keeping the portal's existing single-organization event-switching model. Separate organization identity and URL-level tenant boundaries would require a broader product and data model.
+
+**In plain terms:** Organizers can change only events they organize, while a site administrator can manage any event in this portal.
