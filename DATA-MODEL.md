@@ -169,7 +169,7 @@ does not depend on the application UI.
 
 | Export | How | Contents |
 |---|---|---|
-| **Results CSV** | `GET /api/export.csv` (organizer) | Columns: `project_id` (the fixture id, e.g. `prj_41`, or a zero-padded key for projects created in the app), `raw_mean`, `normalized_mean`, `rank`, `review_count`, `flags`. Uses the latest normalization run; computes one if none exists. Flags: `thin`, `constant_judge`, `duplicate`. |
+| **Results CSV** | `GET /api/export.csv` (organizer) | Columns: `project_id` (the fixture id, e.g. `prj_41`, or `project:<id>` for projects created in the app), `raw_mean`, `normalized_mean`, `rank`, `review_count`, `flags`. Uses the latest normalization run; computes one if none exists. The `flags` field uses only the canonical tokens `thin_batch`, `constant_judge`, and `duplicate`, separated by semicolons. |
 | **Judge score reads** | `GET /api/judge/scores` (judges: own; organizers: any) | JSON of ballots and scores. |
 | **Normalization proof table** | `/organizer/normalization` (download) or `python manage.py export_normalization_proof <run_id> --output proof.csv` | Raw mean, normalized mean and rank change per project from a stored run; needs no running web server. |
 | **Audit chain** | `/api/v1/organizer/audit-log/verify?download=1` | The full chain as JSON, verifiable offline with `scripts/verify_audit_chain.py` (standard library only). |
@@ -197,8 +197,14 @@ The fixture's three deliberate edge cases are handled explicitly:
   `prj_07.is_duplicate_of = prj_41` — the earlier entry is flagged, the later one
   canonical. Both rows exist; the flag records why; an organizer can restore the
   earlier one.
-- **Constant-score judge.** `jdg_07` scored all three of their projects identically.
-  Stored exactly as given; handled by the normalization method (`JUDGING.md` §4).
+- **Constant weighted-ballot judges.** `jdg_07` scored all three criteria identically
+  on each counted assignment, so is constant at the criterion level. `jdg_19` has
+  differing criterion scores, but after excluding superseded `prj_07`, all three
+  counted ballots have the same weighted value (11/3 under the default equal-weight
+  rubric). Both are flagged for zero variance in weighted ballot values when there
+  are at least two counted ballots. These are distinct patterns, not the same scoring
+  behavior. Scores stay stored as
+  given and are handled by the normalization method (`JUDGING.md` §4).
 - **Thin review batches.** Eight projects have two ballots instead of three. Stored
   as given; the count travels with every ranked output.
 
@@ -208,8 +214,9 @@ retained but excluded from ranking, leaving 121 counted ballots from 29 judges.
 ## 8. Privacy and retention
 
 - Tokens, judge-invite links and login-attempt IPs are stored as hashes.
-- Vote identities are keyed pseudonyms; no raw IP address, user agent or account id
-  is stored on a vote, and voting audit entries carry no user (`JUDGING.md` §6.4).
+- Vote identities are keyed pseudonyms: AUTH derives one from the account id, while
+  OPEN uses `REMOTE_ADDR` only. No raw IP address, user agent or account id is stored
+  on a vote, and voting audit entries carry no user (`JUDGING.md` §6.4).
 - Comments are attributed to their author; imported users have no usable password.
 - There is no automatic data expiry. Retention is the operator's decision; the
   export paths in §6 exist so data can be archived or removed deliberately. Because
@@ -224,6 +231,7 @@ retained but excluded from ranking, leaving 121 counted ballots from 29 judges.
 - `VoteAttempt` immutability is enforced in application code, not by a database
   trigger (the audit log is trigger-protected on PostgreSQL).
 - Teams do not carry a track and there is no per-track team-size limit.
-- Rank movement, review counts and flags are stored inside a run's JSON `parameters`
-  as well as in `NormalizedScore`; the JSON is the authoritative record of what the
-  run saw.
+- `NormalizedScore` has no dedicated columns for review counts, project flags, raw
+  rank or rank change. The run's JSON `parameters` stores review counts and project
+  flags; the proof export derives rank change from raw and normalized ranks. The JSON
+  is the authoritative record of those run-level flags and counts.

@@ -130,18 +130,23 @@ when it is explicitly submitted.
 
 ### 4.1 The problem, shown on real data
 
-Judges do not use the scale the same way. Two of the fixture's three deliberate
-edge cases are exactly this problem:
+Judges do not use the scale the same way. The fixture contains two distinct
+constant-judge cases, alongside the thin-batch projects:
 
 - **`jdg_07` scored every one of their three assignments identically**
   (functionality 4, quality 4, innovation 4 on `prj_09`, `prj_17` and `prj_19`).
   A judge who never differentiates tells us their *level*, not the relative
   quality of the projects.
+- **`jdg_19` is constant at the weighted-ballot level, not the criterion level.**
+  Their criterion scores differ. After the superseded `prj_07` ballot is excluded,
+  the three counted ballots all have weighted value 11/3 (about 3.667) under the
+  fixture's equal-weight rubric. This is a separate pattern from `jdg_07`'s
+  criterion-by-criterion constant scores.
 - **Eight of 41 projects have only two reviews instead of three**
   (`prj_10, prj_15, prj_18, prj_19, prj_24, prj_29, prj_39, prj_40`).
 
-`prj_19` is both: it is thin (two reviews) *and* one of its two reviews comes from
-`jdg_07`. Its only genuinely relative signal is the other reviewer, `jdg_29`.
+`prj_19` is thin (two reviews), and one of its two reviews comes from `jdg_07`.
+Its only other reviewer is `jdg_29`.
 Rubric was designed so this case is visible rather than smoothed over (D-04).
 
 ### 4.2 Method
@@ -186,9 +191,12 @@ s2_j = (3*0 + 4*0.3930) / 7 = 0.2246      # strictly positive, so no division by
 z    = (4 - 3.7576) / sqrt(0.2246) = 0.5115
 ```
 
-Every one of `jdg_07`'s ballots yields the same `z = 0.5115`. Their zero variance
-cannot distort the ranking, and their rating still contributes their *level*. The
-same shrinkage is what keeps a one-ballot judge from swinging a project.
+Every one of `jdg_07`'s ballots yields the same `z = 0.5115`: a fixed,
+non-differentiating offset across those projects, not necessarily an absolute zero.
+`jdg_19` also has zero raw variance across counted weighted ballot values, despite
+different criterion cells. Shrinkage makes the variance scale finite and positive
+when the judge has at least two reviews; it does not erase a constant judge's mean
+contribution.
 
 ### 4.3 Policies
 
@@ -196,9 +204,13 @@ same shrinkage is what keeps a one-ballot judge from swinging a project.
 |---|---|
 | D-01 | **Annotate, never replace.** Raw mean, normalized score and rank are shown together everywhere (dashboard, proof page, CSV). Normalization never overwrites the record. |
 | D-02 | **Duplicates: the later submission is canonical.** Team `tm_07` submitted "Dry Harbour" twice: `prj_07` at 04:29 and `prj_41` at 17:57, three minutes before the deadline. A near-deadline resubmission reads as a fix, so `prj_41` is the entry (raw mean 3.8333, normalized 3.7912, rank 8) and `prj_07` is flagged `is_duplicate_of = prj_41`, excluded from ranking and from voting, but kept in full. The flag is audit-logged, attributed to "duplicate-detection policy v1", and an organizer can reverse it in one click. |
-| D-03 | **Nobody is silently excluded.** A constant-score judge is neutralized statistically (above) and flagged on the dashboard ("scored 3/3 assignments identically"). Removing a judge is a human, audit-logged decision. |
+| D-03 | **Nobody is silently excluded.** A judge with at least two counted ballots and zero variance in weighted ballot values is retained, adjusted using the shrinkage formula above, and flagged. Criterion scores need not all be identical. Removing a judge is a human, audit-logged decision. |
 | D-04 | **Thin evidence stays visible.** The review count travels with every rank (gallery, dashboard, CSV). Thin-batch and constant-judge warnings are reported together, so `prj_19` shows both instead of one innocuous number. |
 | D-05 | **Calibrate only within connected judge groups.** If the judge graph is disconnected, each component is normalized separately and a single cross-component ranking is refused without an explicit organizer override. |
+
+The results CSV uses canonical machine-readable flags only: `thin_batch`,
+`constant_judge`, and `duplicate` (semicolon-separated). These tokens are distinct
+from shorter presentation labels used in the dashboard.
 
 ### 4.4 Evidence: what it shows and what it does not
 
@@ -271,8 +283,8 @@ or downloaded from `/organizer/normalization`.
 
 ### 5.1 One function decides who sees judging scores
 
-The two routes the checker names, `GET /api/judge/scores` and
-`GET /api/judge/scores?judge=<id>`, are served by a single function,
+The checker sends two request forms to the same URLconf path:
+`GET /api/judge/scores` and `GET /api/judge/scores?judge=<id>`. Both use a single function,
 `services.judging.get_scores(actor, judge_external_id=None)`. There is exactly one
 place where the check can be forgotten, and it is not forgotten:
 
@@ -294,13 +306,14 @@ organizer's explicit lookup.
 
 ### 5.3 Every route is declared, and the declaration is enforced
 
-`tests/authz_expectations.yaml` lists the expected response for every route and
-persona (anonymous, participant, judge, organizer, site admin). The current
-URLconf has 48 named routes and 48 declarations. A test walks the URLconf and fails
-the build if any route has no declaration, so an endpoint added without a policy
-decision cannot ship. To prove that alarm can actually fail, a second test points
-it at a temporary URLconf containing an undeclared route and asserts that it
-fires. No deliberately leaky route exists in the shipped application.
+`src/rubric/urls.py` has 47 actual `path()` declarations. The authorization matrix
+has a separate `peer_scores` expectation for the query-parameter variant of
+`judge_scores`; it is an authorization-test case, not a 48th URLconf route. A test
+walks the URLconf and fails the build if any route has no declaration, so an
+endpoint added without a policy decision cannot ship. To prove that alarm can
+actually fail, a second test points it at a temporary URLconf containing an
+undeclared route and asserts that it fires. No deliberately leaky route exists in
+the shipped application.
 
 Requests resolve to an `Actor` (event-scoped, with independent
 `is_participant`/`is_judge`/`is_organizer` flags, since one user may hold several
@@ -353,9 +366,10 @@ curl -i -H "Authorization: Bearer rubric_seed_participant_tok_3f4e5d6c7b8a" \
 
 ## 6. Public voting, abuse model and threat model
 
-Public voting is tier T3. It has no automated credit path, so it is designed so a
-reviewer can watch each defense work (§6.8). Voting is configured per event by an
-organizer: access mode, optional vote budget, and an open/close window.
+Public voting is tier T3. The official `run.py` acceptance checker does not test
+T3, but dedicated Django tests cover its mechanisms and the feature is designed so
+a reviewer can watch each defense work (§6.8). Voting is configured per event by
+an organizer: access mode, optional vote budget, and an open/close window.
 
 ### 6.1 Policies
 

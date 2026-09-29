@@ -261,19 +261,27 @@ class OrganizerDashboardAndExportTests(TestCase):
         # Compound case prj_19: reviewed by constant judge jdg_07 and thin review count
         row_19 = rows_by_id['prj_19']
         self.assertEqual(int(row_19['review_count']), 2)
-        self.assertIn('thin', row_19['flags'])
-        self.assertIn('constant', row_19['flags'])
+        self.assertIn('thin_batch', row_19['flags'].split(';'))
+        self.assertIn('constant_judge', row_19['flags'].split(';'))
         self.assertTrue(float(row_19['raw_mean']) > 0)
         self.assertTrue(float(row_19['normalized_mean']) > 0)
         self.assertTrue(int(row_19['rank']) > 0)
 
         # Duplicate prj_07: flagged duplicate, excluded from ranking (empty rank and norm mean)
         row_07 = rows_by_id['prj_07']
-        self.assertIn('duplicate', row_07['flags'])
+        self.assertIn('duplicate', row_07['flags'].split(';'))
         self.assertEqual(row_07['rank'], '')
         self.assertEqual(row_07['normalized_mean'], '')
 
         # Thin batch project prj_10
         row_10 = rows_by_id['prj_10']
         self.assertEqual(int(row_10['review_count']), 2)
-        self.assertIn('thin', row_10['flags'])
+        self.assertIn('thin_batch', row_10['flags'].split(';'))
+
+        # CSV exports contain only canonical machine-readable flag values.
+        allowed_flags = {'thin_batch', 'constant_judge', 'duplicate'}
+        for row in rows_by_id.values():
+            flags = set(row['flags'].split(';')) - {''}
+            self.assertTrue(flags <= allowed_flags, f"Unexpected CSV flags for {row['project_id']}: {flags}")
+            self.assertNotIn('thin', flags)
+            self.assertNotIn('constant-judge', flags)

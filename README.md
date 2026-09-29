@@ -17,8 +17,8 @@
 - **Hackathon:** DogFood 2026
 - **Team:** Team AM
 - **Repository:** [https://github.com/Dev-Am12/Rubric](https://github.com/Dev-Am12/Rubric)
-- **Demo Video:** [▶ Demo Video (Placeholder)](https://example.com/replace-with-demo-video)
-- **Slide Deck:** [📊 Slide Deck (Placeholder)](https://example.com/replace-with-slide-deck)
+- **Demo Video:** [▶ Demo Video](https://drive.google.com/drive/folders/1sVArFhpSnswrgRyhIGcacO7rwGqx6_lW?usp=sharing)
+- **Slide Deck:** [📊 Slide Deck](https://gamma.app/docs/Rubric-scannk20nm92o5e)
 
 ---
 
@@ -92,7 +92,7 @@ Expected output:
 ```text
 DOGFOOD 2026 acceptance report
 portal: http://localhost:8080
-claimed: nothing
+claimed: T1 T2
 fixtures: fixtures.json
 
 T1  gallery is public ................. PASS
@@ -103,7 +103,7 @@ T2  judge cannot see peer scores ...... PASS
 T2  participant blocked ............... PASS
 T2  csv export works .................. PASS
 
-claimed nothing, verified T1 T2
+claimed T1 T2, verified T1 T2
 ```
 
 ### Local Development Workflow (Native Python & PostgreSQL)
@@ -135,15 +135,15 @@ Rubric is a complete, self-hostable hackathon platform designed for high-stakes 
 
 ```mermaid
 flowchart TD
-    EV[1. Event Definition<br/>Dates, Tracks, Prizes, Rubric] --> TM[2. Team Roster<br/>Invite links & Codes]
-    TM --> SUB[3. Submissions<br/>Repo, Video, Live URLs]
-    SUB --> DUP[4. Integrity Screening<br/>Near-deadline duplicates flagged]
-    DUP --> ASSIGN[5. Balanced Assignment<br/>Track eligibility, conflict checks, graph health]
-    ASSIGN --> JUDGE[6. Independent Judging<br/>Two-pane console, autosave, isolated scores]
-    JUDGE --> NORM[7. Empirical-Bayes Normalization<br/>Cross-judge shrinkage & calibration proof]
-    NORM --> RES[8. Ranked Results<br/>Raw mean, normalized score, review counts]
-    RES --> VOTE[9. Public Voting (T3)<br/>OPEN or AUTH mode, pseudonymous ballot]
-    VOTE --> AUDIT[10. Audit Ledger & CSV Export<br/>SHA-256 hash chain & trigger-enforced immutability]
+    EV["1. Event Definition<br/>Dates, Tracks, Prizes, Rubric"] --> TM["2. Team Roster<br/>Invite links & Codes"]
+    TM --> SUB["3. Submissions<br/>Repo, Video, Live URLs"]
+    SUB --> DUP["4. Integrity Screening<br/>Near-deadline duplicates flagged"]
+    DUP --> ASSIGN["5. Balanced Assignment<br/>Track eligibility, conflict checks, graph health"]
+    ASSIGN --> JUDGE["6. Independent Judging<br/>Two-pane console, autosave, isolated scores"]
+    JUDGE --> NORM["7. Empirical-Bayes Normalization<br/>Cross-judge shrinkage & calibration proof"]
+    NORM --> RES["8. Ranked Results<br/>Raw mean, normalized score, review counts"]
+    RES --> VOTE["9. Public Voting (T3)<br/>OPEN or AUTH mode, pseudonymous ballot"]
+    VOTE --> AUDIT["10. Audit Ledger & CSV Export<br/>SHA-256 hash chain & trigger-enforced immutability"]
 ```
 
 ---
@@ -583,8 +583,8 @@ To run an event using Rubric:
 
 ## 17. Demo
 
-- **Video Demonstration:** [▶ Demo Video (Placeholder)](https://example.com/replace-with-demo-video)
-- **Slide Deck:** [📊 Slide Deck (Placeholder)](https://example.com/replace-with-slide-deck)
+- **Video Demonstration:** [▶ Demo Video](https://drive.google.com/drive/folders/1sVArFhpSnswrgRyhIGcacO7rwGqx6_lW?usp=sharing)
+- **Slide Deck:** [📊 Slide Deck](https://gamma.app/docs/Rubric-scannk20nm92o5e)
 
 ---
 

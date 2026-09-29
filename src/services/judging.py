@@ -199,11 +199,7 @@ def export_csv(actor):
         for f in proj_flags:
             ftype = f.get('type', str(f)) if isinstance(f, dict) else str(f)
             flag_labels.append(ftype)
-            if ftype == 'thin_batch':
-                flag_labels.append('thin')
-            elif ftype == 'constant_judge':
-                flag_labels.append('constant-judge')
-        if row.project.is_duplicate_of is not None and 'duplicate' not in "".join(flag_labels):
+        if row.project.is_duplicate_of is not None and 'duplicate' not in flag_labels:
             flag_labels.append('duplicate')
 
         # Stable de-duplication preserving order

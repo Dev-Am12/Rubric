@@ -46,7 +46,8 @@ Monday. That turned four requirements into architecture:
 | Database | PostgreSQL 16 in the shipped stack; SQLite for fast local test runs | Postgres gives row locks, advisory locks and trigger-enforced audit immutability. The suite runs on both. |
 | UI | Server-rendered Django templates + HTMX (vendored, one static file) | No Node toolchain, no build step, no client bundle to audit. Live regions (dashboard, ballots) update with small HTML swaps. |
 | Web server | gunicorn (3 workers) with WhiteNoise for static files | A single container serves both application and assets, no reverse proxy needed. |
-| Auth | A standalone token model (§6.1), not Django sessions | The acceptance checker never logs in; it attaches a header. One token mechanism serves both seeded personas and real users. |
+| Auth | A standalone `AuthToken` model; bearer token in a header or custom `session` cookie (§6.1) | The checker attaches a header; browser login puts the same token in an HttpOnly cookie. Django's session-auth backend is not used. |
+| API | Ordinary Django views returning `JsonResponse` / `HttpResponse` and calling the service layer | No API framework or generated OpenAPI schema is part of the shipped implementation. |
 | Numerics | Standard library plus NumPy (graph Laplacian eigenvalues) | Small, well-known, no service dependencies. |
 
 Not present, on purpose: Redis, Celery, Node, a message broker, Django admin,
@@ -85,7 +86,7 @@ sequenceDiagram
     participant W as View (HTML or JSON)
     participant S as services.*
     participant D as Database
-    C->>M: request + Authorization header or session cookie
+    C->>M: request + Authorization header or custom session cookie
     M->>M: hash token, look up AuthToken, build Actor (event-scoped)
     M->>W: request.actor
     W->>S: service_fn(actor, ...)
@@ -118,7 +119,7 @@ The rules of the layering:
 
 ```
 src/
-├── rubric/        settings, URLconf (48 named routes), WSGI
+├── rubric/        settings, URLconf (47 path declarations), WSGI
 ├── accounts/      User, AuthToken, EventMembership, judge track eligibility,
 │                  auth middleware, Actor, login/register views, auth rate limit
 ├── events/        Event, Track, Prize; event management services and organizer views
@@ -134,7 +135,7 @@ src/
 ├── api/           JSON endpoints (score reads, CSV, organizer JSON, ballot submission)
 ├── templates/     server-rendered pages and HTMX fragments
 └── static/        one stylesheet, one vendored script
-tests/             270 tests, plus the authorization matrix (authz_expectations.yaml)
+tests/             Django test suite, plus the authorization matrix (authz_expectations.yaml)
 scripts/           verify_audit_chain.py (offline verifier), check_no_external_assets.py
 ```
 
@@ -145,10 +146,11 @@ scripts/           verify_audit_chain.py (offline verifier), check_no_external_a
 Authentication is a small token system. A user has zero or more `AuthToken` rows
 holding **only the SHA-256 hash** of the token; the raw value exists once, at
 creation. The middleware reads `Authorization: Bearer <token>` first, then the
-`session` cookie (which browser logins set with `HttpOnly` and `SameSite=Lax`).
-This gives the acceptance checker what it needs (a header that stands for a role)
-and gives real users an ordinary login, through one code path. Passwords use
-Django's hasher; accounts carry none of Django's admin baggage (decisions 1, 8).
+custom `session` cookie (which browser logins set with `HttpOnly` and `SameSite=Lax`).
+That cookie carries the same raw token, not a Django session key. This gives the
+acceptance checker a header that stands for a role and browser users a cookie login
+through one token-validation path. Passwords use Django's hasher; accounts carry
+none of Django's admin baggage (decisions 1, 8).
 
 ### 6.2 Actors and roles
 
@@ -161,12 +163,13 @@ and site administrator.
 
 ### 6.3 Authorization is declared and tested
 
-`tests/authz_expectations.yaml` holds the expected status for each of the 48 named
-routes and each persona. A test fails the build if any route has no declaration, and
-a second test proves that alarm can fire by aiming it at a temporary URLconf with an
-undeclared route. The judge-score isolation rule is implemented in exactly one
-function, `get_scores`, shared by both routes the acceptance checker names
-(`JUDGING.md` §5).
+`src/rubric/urls.py` has 47 actual `path()` declarations. The authorization matrix
+contains a separate `peer_scores` case for the query-parameter variant of
+`judge_scores`, so that probe is not a 48th URLconf route. A test fails the build if
+any route has no declaration, and a second test proves that alarm can fire by
+aiming it at a temporary URLconf with an undeclared route. The judge-score
+isolation rule is implemented in exactly one function, `get_scores`, shared by
+the base-path and peer-query checker probes (`JUDGING.md` §5).
 
 Two rules apply beyond per-route checks:
 
@@ -273,13 +276,14 @@ Building the image, and pulling the base images, does need a network, once.
 
 ### 10.1 Tests
 
-270 tests run on both SQLite and PostgreSQL. Notable kinds:
+The Django test suite runs on both SQLite and PostgreSQL. Notable coverage includes:
 
 - **Authorization matrix**: every route by every persona, plus the coverage alarm
   and its control case.
-- **Planted-truth tests**: fixed inputs whose correct answers are known (the
-  constant-score judge `jdg_07`, the thin project `prj_19`, the duplicate pair
-  `prj_07`/`prj_41`, a synthetic judge population with known offsets).
+- **Planted-truth tests**: fixed inputs whose correct answers are known (`jdg_07`
+  is criterion-level constant, `jdg_19` is constant by weighted ballot value, the
+  thin project `prj_19`, the duplicate pair `prj_07`/`prj_41`, and a synthetic judge
+  population with known offsets).
 - **Concurrency tests**: parallel threads racing a vote budget and the audit chain.
 - **Documentation consistency**: numbers quoted in `JUDGING.md` are recomputed from a
   real run; every decision in `DECISIONS.md` has a table-of-contents entry; no file
@@ -317,6 +321,9 @@ scripting reason and was fixed, which is why its diagnostics step exists.
   README and `JUDGING.md` §9.
 - **Not built:** webhooks, certificates, an embeddable widget, an OpenAPI document,
   pairwise judging, bulk import beyond the fixture format.
+- **Tier status:** Public voting (T3) is implemented in OPEN and AUTH modes and has
+  dedicated backend and browser-flow tests. Stretch tier T4 remains incomplete and
+  unclaimed; no T4 feature development is included in this release.
 
 ## 12. Extending Rubric
 

@@ -9,7 +9,7 @@ that says so explicitly, so the history stays honest.
 ## Table of Contents
 
 - [1. Authentication: a standalone token model, not Django sessions](#1-authentication-a-standalone-token-model-not-django-sessions)
-- [2. One function decides who sees judging scores — for both required routes](#2-one-function-decides-who-sees-judging-scores--for-both-required-routes)
+- [2. One function decides who sees judging scores, including peer lookup](#2-one-function-decides-who-sees-judging-scores-including-peer-lookup)
 - [3. A deliberately broken route, kept on purpose, to prove our own enforcement works](#3-a-deliberately-broken-route-kept-on-purpose-to-prove-our-own-enforcement-works)
 - [4. Duplicate submissions: the later entry is canonical, the earlier one is flagged, never deleted](#4-duplicate-submissions-the-later-entry-is-canonical-the-earlier-one-is-flagged-never-deleted)
 - [5. Judges aren't excluded for suspicious scoring patterns — they're neutralized statistically and flagged](#5-judges-arent-excluded-for-suspicious-scoring-patterns--theyre-neutralized-statistically-and-flagged)
@@ -46,9 +46,9 @@ that says so explicitly, so the history stays honest.
 
 ---
 
-## 2. One function decides who sees judging scores — for both required routes
+## 2. One function decides who sees judging scores, including peer lookup
 
-**Decision:** The two separately-named routes for reading judge scores resolve to the exact same URL, backed by exactly one service-layer function that checks the caller's identity before returning anything.
+**Decision:** The `/api/judge/scores` URLconf entry serves the score-list request; the peer-score check adds a `judge` query parameter to that same path. Both checks use exactly one service-layer function that checks the caller's identity before returning anything.
 
 **Rationale:** The single most common way this category of tool loses points is trusting an id in the query string instead of checking it against who's actually asking. Writing the check once, in one place, removes the chance of two near-identical implementations quietly drifting apart. An organizer sees everyone's scores; a judge sees only their own, no matter whose id they ask for. This was deliberately stress-tested before a line of real code existed: two early draft versions of this exact function were checked against each other during planning, and both were found to be wrong in different ways — which is exactly why one hardened function exists now instead of logic repeated per route.
 
@@ -78,7 +78,7 @@ that says so explicitly, so the history stays honest.
 
 ## 5. Judges aren't excluded for suspicious scoring patterns — they're neutralized statistically and flagged
 
-**Decision:** A judge whose scores show an unusual pattern (for example, scoring every project identically) is never removed from the dataset. Their raw scores stay fully visible; a statistical adjustment limits how much they can skew a project's *relative* ranking, and the pattern itself is shown as a visible flag, not fixed quietly. The same honesty applies to any project reviewed fewer times than planned, and to any pair of judges with no shared project to compare against — both are shown, not smoothed into one falsely clean number.
+**Decision:** A judge with at least two counted ballots whose weighted ballot values have zero variance (whether each criterion is identical or only the weighted totals are identical) is never removed from the dataset. Their raw scores stay fully visible; a statistical adjustment limits how much they can skew a project's *relative* ranking, and the pattern itself is shown as a visible flag, not fixed quietly. The same honesty applies to any project reviewed fewer times than planned, and to any pair of judges with no shared project to compare against — both are shown, not smoothed into one falsely clean number.
 
 **Rationale:** Silently excluding a judge's input would be a bigger, harder-to-see decision than flagging it, and this is exactly the kind of thing Judging Integrity is meant to catch if handled quietly. Reducing influence statistically rather than by exclusion keeps every data point on record. The underlying method is deliberately described as a practical, standard-shaped statistical adjustment, not a claim to a fully rigorous model — overstating that would be its own kind of dishonesty.
 
@@ -140,7 +140,7 @@ that says so explicitly, so the history stays honest.
 
 **Decision:** Describe constant judges by the invariant the shrinkage formula actually provides: their z-score contribution is a fixed, non-differentiating offset across their projects, not necessarily a value near zero. Treat rank changes as context-sensitive display movement and assess score changes alongside local score gaps and review counts.
 
-**Rationale:** The constant-judge shrinkage policy's earlier wording said a constant judge's contribution "converges toward zero." We implemented the displayed formula exactly and measured the real fixture: `jdg_07` contributes 0.5115488667 to each of `prj_09`, `prj_17`, and `prj_19`. The equal contribution is non-differentiating, while its absolute value depends on the pooled mean. Leave-one-out measurements showed score changes for `prj_09` and `prj_17` in the same range as a non-constant three-assignment control; `prj_19`'s larger change coincides with the remaining reviewer count falling to one. Baseline neighbor gaps also showed much tighter score spacing around `prj_09` and `prj_17` than around the control projects. Rank movement was therefore dropped as a T2 assertion: rank is sensitive to local crowding even when score changes are comparable. This correction came from measuring the fixture before asserting the test, not from changing the formula to fit an overstrong claim.
+**Rationale:** The constant-judge shrinkage policy's earlier wording said a constant judge's contribution "converges toward zero." We implemented the displayed formula exactly and measured the real fixture: `jdg_07` contributes 0.5115488667 to each of `prj_09`, `prj_17`, and `prj_19`. The equal contribution is non-differentiating, while its absolute value depends on the pooled mean. The constant flag is based on zero variance in weighted ballot values: `jdg_07` is constant at the criterion level, while `jdg_19` has varying criterion scores but equal weighted values on the three counted ballots after excluding `prj_07`. Leave-one-out measurements showed score changes for `prj_09` and `prj_17` in the same range as a non-constant three-assignment control; `prj_19`'s larger change coincides with the remaining reviewer count falling to one. Baseline neighbor gaps also showed much tighter score spacing around `prj_09` and `prj_17` than around the control projects. Rank movement was therefore dropped as a T2 assertion: rank is sensitive to local crowding even when score changes are comparable. This correction came from measuring the fixture before asserting the test, not from changing the formula to fit an overstrong claim.
 
 **In plain terms:** The formula did not make the constant judge's contribution zero; it made the contribution the same on each of that judge's projects. We measured score changes and neighboring score gaps before revising the claim, and documented that ranks can move sharply in a crowded field.
 

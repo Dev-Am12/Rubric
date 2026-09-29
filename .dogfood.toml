@@ -15,5 +15,5 @@ peer_scores = "/api/judge/scores?judge=jdg_07"
 csv_export = "/api/export.csv"
 
 [tiers]
-claimed = []
+claimed = ["T1", "T2"]
 pitch = "Rubric delivers an auditable hackathon evaluation portal featuring cryptographic append-only audit logging, empirical-Bayes shrinkage normalization, and provable judge score isolation."

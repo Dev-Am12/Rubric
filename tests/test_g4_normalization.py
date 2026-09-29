@@ -122,6 +122,40 @@ class FixtureNormalizationTests(TestCase):
                 if value is not None:
                     self.assertTrue(math.isfinite(float(value)))
 
+    def test_jdg19_is_constant_only_at_weighted_ballot_level(self):
+        normalization = run(self.organizer_actor)
+        assignments = JudgeAssignment.objects.filter(
+            event=self.event,
+            judge__external_id='jdg_19',
+            status='COMPLETED',
+        ).exclude(project__is_duplicate_of__isnull=False).select_related('project', 'ballot')
+        criteria = list(self.event.rubrics.get().criteria.order_by('order', 'pk'))
+        weighted_values = []
+        criterion_values = []
+        for assignment in assignments:
+            scores = {
+                score.criterion_id: score.value
+                for score in assignment.ballot.scores.all()
+            }
+            denominator = sum((criterion.weight for criterion in criteria), start=0)
+            weighted_values.append(sum(
+                (criterion.weight * scores[criterion.pk] for criterion in criteria), start=0,
+            ) / denominator)
+            criterion_values.append(tuple(scores[criterion.pk] for criterion in criteria))
+
+        self.assertEqual(len(weighted_values), 3)
+        self.assertEqual(len(set(weighted_values)), 1)
+        self.assertGreater(len(set(criterion_values)), 1)
+        stats = next(
+            row for row in normalization.parameters['judge_statistics']
+            if row['judge_external_id'] == 'jdg_19'
+        )
+        self.assertEqual(stats['raw_variance'], 0.0)
+        self.assertEqual(stats['n'], 3)
+        self.assertIn('jdg_19', {
+            flag['judge_external_id'] for flag in normalization.parameters['judge_flags']
+        })
+
     def test_thin_batches_flagged_real_fixture(self):
         normalization = run(self.organizer_actor)
         proof_rows = {
