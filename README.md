@@ -78,7 +78,7 @@ seeded. test logins:
   participant: Authorization: Bearer rubric_seed_participant_tok_3f4e5d6c7b8a
 ```
 
-*Web Browser Login:* An organizer account is seeded at `superorganizer@example.com` with password `organizer123`.
+*Web Browser Login:* An organizer account is seeded at `superorganizer@example.com` or `organizer@rubric.local` with password `organizer123`.
 
 ### Running the Official Acceptance Checker
 
