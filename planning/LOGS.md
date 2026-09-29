@@ -375,5 +375,9 @@ un.py T1/T2 check. Temporary database and server log files were removed afterwar
 - Full suite verification: SQLite — `Ran 224 tests in 40.157s`, `OK (skipped=1)`; PostgreSQL — `Ran 224 tests in 165.086s`, `OK`. The Postgres concurrency tests use `AuditTransactionTestCase` so the production audit TRUNCATE trigger is disabled only during test flush and re-enabled immediately afterward.
 - The first live `run.py` attempt returned 500s because the configured local `rubric_dev` Postgres schema had not yet applied `events.0004_voting_settings` / `voting.0001_initial`; applied those migrations, then reran successfully: T1 gallery public, fixture project shown, closed submissions, T2 own scores, peer-score denial, participant denial, and CSV export all PASS. Portal was `http://localhost:8080`; `claimed = []` stayed unchanged. No fixture voting dates were seeded or altered.
 
+## 2026-09-29 — Phase 1.2: offline-check network lookup
+
+- Finding: created-not-started containers have no NetworkID.
+
 
 

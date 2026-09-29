@@ -133,11 +133,33 @@ jobs:
           set -eu
           docker compose create --no-build --pull never
           web_id="$(docker compose ps -aq web)"
-          network_id="$(docker inspect "$web_id" --format '{{range .NetworkSettings.Networks}}{{.NetworkID}}{{end}}')"
-          subnet="$(docker network inspect "$network_id" --format '{{(index .IPAM.Config 0).Subnet}}')"
-          echo "Using compose subnet $subnet"
+          if [ -z "$web_id" ]; then
+            echo 'ERROR: docker compose did not return a web container ID.' >&2
+            exit 1
+          fi
+          network_name="$(docker inspect "$web_id" --format '{{range $name, $net := .NetworkSettings.Networks}}{{$name}}{{end}}')"
+          if [ -z "$network_name" ]; then
+            echo "ERROR: web container $web_id has no attached network name." >&2
+            exit 1
+          fi
+          if ! subnet="$(docker network inspect "$network_name" --format '{{(index .IPAM.Config 0).Subnet}}')"; then
+            echo "ERROR: failed to inspect subnet for network '$network_name'." >&2
+            exit 1
+          fi
+          if [ -z "$subnet" ]; then
+            echo "ERROR: network '$network_name' has an empty subnet." >&2
+            exit 1
+          fi
+          echo "web_id=$web_id"
+          echo "network_name=$network_name"
+          echo "subnet=$subnet"
+          if ! sudo iptables -w -S DOCKER-USER >/dev/null 2>&1; then
+            echo 'ERROR: required iptables chain DOCKER-USER does not exist.' >&2
+            exit 1
+          fi
           sudo iptables -w -N RUBRIC-OFFLINE-EGRESS
           sudo iptables -w -I DOCKER-USER -s "$subnet" -j RUBRIC-OFFLINE-EGRESS
+          sudo iptables -w -I RUBRIC-OFFLINE-EGRESS 1 -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
           sudo iptables -w -A RUBRIC-OFFLINE-EGRESS -d 10.0.0.0/8 -j RETURN
           sudo iptables -w -A RUBRIC-OFFLINE-EGRESS -d 172.16.0.0/12 -j RETURN
           sudo iptables -w -A RUBRIC-OFFLINE-EGRESS -d 192.168.0.0/16 -j RETURN
@@ -158,6 +180,16 @@ jobs:
           python3 run.py .dogfood.toml > offline-report.txt
           cat offline-report.txt
           diff -u online-report/acceptance-report.txt offline-report.txt
+          echo 'Offline report diff is empty'
+
+      - name: Dump offline-check diagnostics on failure
+        if: failure()
+        run: |
+          docker compose ps -a || true
+          sudo iptables -w -S DOCKER-USER || true
+          sudo iptables -w -nvL RUBRIC-OFFLINE-EGRESS || true
+          docker network ls || true
+          docker compose logs --tail=80 || true
 
       - name: Stop offline stack
         if: always()
