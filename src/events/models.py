@@ -1,5 +1,16 @@
+import secrets
+
 from django.conf import settings
 from django.db import models
+
+
+def generate_voting_seed():
+    return secrets.token_hex(32)
+
+
+class VotingAccess(models.TextChoices):
+    OPEN = 'OPEN', 'Open link'
+    AUTH = 'AUTH', 'Authenticated users'
 
 
 class Event(models.Model):
@@ -10,6 +21,14 @@ class Event(models.Model):
     submissions_close_at = models.DateTimeField()
     voting_opens_at = models.DateTimeField(null=True, blank=True)
     voting_closes_at = models.DateTimeField(null=True, blank=True)
+    voting_access = models.CharField(
+        max_length=8,
+        choices=VotingAccess.choices,
+        default=VotingAccess.OPEN,
+    )
+    votes_per_voter = models.PositiveIntegerField(null=True, blank=True)
+    # Secret per-event entropy for OPEN voter fingerprints and V-03 ballot order.
+    voting_seed = models.CharField(max_length=64, default=generate_voting_seed, editable=False)
     is_current = models.BooleanField(default=False)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -63,4 +82,3 @@ class Prize(models.Model):
 
     def __str__(self):
         return f"{self.rank_label} ({self.event.slug})"
-

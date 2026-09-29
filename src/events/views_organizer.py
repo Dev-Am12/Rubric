@@ -80,6 +80,8 @@ def organizer_event_dates_view(request, event_id):
         sub_close = request.POST.get("submissions_close_at", "").strip() or None
         vote_open = request.POST.get("voting_opens_at", "").strip() or None
         vote_close = request.POST.get("voting_closes_at", "").strip() or None
+        voting_access = request.POST.get("voting_access", "OPEN").strip().upper()
+        votes_per_voter = request.POST.get("votes_per_voter", "").strip() or None
 
         try:
             events_services.update_event(
@@ -91,6 +93,8 @@ def organizer_event_dates_view(request, event_id):
                 submissions_close_at=sub_close,
                 voting_opens_at=vote_open,
                 voting_closes_at=vote_close,
+                voting_access=voting_access,
+                votes_per_voter=votes_per_voter,
             )
             return redirect(f"{reverse('organizer_events')}?updated={event.slug}")
         except ValueError as exc:

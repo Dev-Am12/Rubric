@@ -50,6 +50,9 @@ Companion to PLAN.md/RESEARCH.md/LOGS.md. This is our own pre-kickoff sketch —
 | submissions_open_at | timestamp | |
 | submissions_close_at | timestamp | **loaded verbatim from the fixture's own `submissions_close`** (RESEARCH §2.2/§7.5) — never invented |
 | voting_opens_at / voting_closes_at | timestamp, nullable | T3 |
+| voting_access | enum: OPEN / AUTH, default OPEN | T3; email-gated mode is unavailable in offline deployments |
+| votes_per_voter | non-negative integer, nullable | null means no total budget; each project remains unique per voter |
+| voting_seed | random per-event secret, 64 hex chars | HMAC salt and deterministic ballot ordering; generated for existing events by data migration |
 | created_by | FK → User | |
 
 **EventMembership** — the event-scoped role model (participant/judge/organizer are per-event; admin is site-wide via `User.is_site_admin`)
@@ -209,28 +212,28 @@ The own-score query filters by the authenticated user because non-fixture judges
 ### 1.3 Public (T3 — never suite-verified, build for human verifiability, RESEARCH A14)
 **Full design in VOTING.md — backlog item 5.** `VoteAttempt` (append-only, every attempt) feeds both the rate-limit check and the audit trail; `Vote` is a small derived table written only on success, for fast tallying.
 
-**VoteAttempt**
+**VoteAttempt** (append-only)
 | field | type | notes |
 |---|---|---|
 | id, event_id, project_id | | |
-| mode | enum: OPEN / EMAIL / AUTH | |
-| voter_fingerprint | text | salted hash (open) / HMAC token hash (email) / user_id (auth) |
-| outcome | enum: ACCEPTED / REJECTED_DUPLICATE / REJECTED_RATE_LIMIT / REJECTED_CLOSED | |
+| mode | enum: OPEN / AUTH | |
+| voter_fingerprint | text | HMAC with event seed over REMOTE_ADDR + user-agent (open); user id string (auth); raw network identifiers are never stored |
+| outcome | enum: ACCEPTED / REJECTED_DUPLICATE / REJECTED_RATE_LIMIT / REJECTED_CLOSED / REJECTED_BUDGET / WITHDRAWN | |
 | created_at | timestamp | indexed `(fingerprint, created_at)` for the sliding-window query |
 
 **Vote**
 | field | type | notes |
 |---|---|---|
 | id, event_id, project_id, mode, voter_fingerprint | | |
-| weight | numeric, default 1 | reserved for a QV mode, off by default |
-| attempt_id | FK → VoteAttempt | |
+| weight | numeric, default 1 | fixed at 1; quadratic voting is out of scope |
+| attempt_id | nullable FK → VoteAttempt | linked before transaction commit; nullable only for the insert sequence |
 | created_at | timestamp | |
 | **unique(event_id, project_id, mode, voter_fingerprint)** | | one compound key, no partial indexes needed |
 
 **Comment**
 | field | type | notes |
 |---|---|---|
-| id, project_id, author_id (nullable), body, created_at, is_flagged | | flag-and-hide, never delete (VOTING.md V-05) |
+| id, project_id, author_id (nullable), mode, voter_fingerprint, body, created_at, is_flagged | | flag-and-hide, never delete (VOTING.md V-05) |
 
 ### 1.4 Stretch (T4 — never suite-verified, RESEARCH A14; build as core-rubric work per §7.0, not "for the bonus")
 

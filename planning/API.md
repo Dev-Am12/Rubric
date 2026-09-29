@@ -48,9 +48,11 @@ Depends on SCHEMA/AUTHZ/NORMALIZATION/ASSIGNMENT/VOTING.md. Core principle (RESE
 |---|---|---|
 | `GET /vote/{event}` | `services.voting.get_ballot(actor, event)` — ordered per V-03 | mode-dependent |
 | `POST /vote/{event}/{project}` | `services.voting.cast(actor, event, project)` | mode-dependent, rate-limited |
-| `GET /results/{event}` | `services.voting.get_results(actor, event)` — gated per V-02 | organizer during window, everyone after close (no separate toggle — F10) |
+| `POST /vote/{event}/{project}/withdraw` | `services.voting.withdraw(actor, event, project)` | own vote, while window is open |
+| `GET /results/{event}` | `services.voting.get_results(actor, event)` — gated per V-02 | organizer any time; others only after non-null close time |
 | `POST /projects/{id}/comments` | `services.voting.comment(actor, id, body)` | mode-dependent |
 | `POST /api/v1/organizer/comments/{id}/flag` | `services.voting.flag_comment(actor, id)` | organizer |
+| `GET /api/v1/organizer/voting/summary` | `services.voting.integrity_summary(actor, event)` | organizer |
 
 ### `api` (T4 completeness)
 | Method + path | Service call | Auth |

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Voting results · {{ result.event.name }}{% endblock %}
+{% block content %}
+<main class="page-container">
+  <h1>Voting results: {{ result.event.name }}</h1>
+  <ol>
+    {% for row in result.results %}
+      <li>{{ row.project.title }} — {{ row.vote_count }} vote{{ row.vote_count|pluralize }}</li>
+    {% empty %}
+      <li>No eligible submissions are available.</li>
+    {% endfor %}
+  </ol>
+</main>
+{% endblock %}

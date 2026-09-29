@@ -60,6 +60,24 @@
         </div>
       </div>
 
+      <h2 style="font-size: 1.125rem; margin: 1.5rem 0 0.75rem;">Public voting</h2>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.5rem;">
+        <div>
+          <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 0.375rem;">Voter access</label>
+          <select name="voting_access" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.375rem;">
+            <option value="OPEN" {% if event.voting_access == 'OPEN' %}selected{% endif %}>Open link</option>
+            <option value="AUTH" {% if event.voting_access == 'AUTH' %}selected{% endif %}>Signed-in users</option>
+          </select>
+          <span style="font-size: 0.75rem; color: #64748b;">Email-gated voting is not available while offline.</span>
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 0.375rem;">Vote budget per voter</label>
+          <input type="number" name="votes_per_voter" min="0" value="{{ event.votes_per_voter|default_if_none:'' }}" placeholder="No cap"
+                 style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.375rem; font-size: 0.875rem;">
+          <span style="font-size: 0.75rem; color: #64748b;">Blank means one vote per project with no total budget. Withdrawing frees one vote.</span>
+        </div>
+      </div>
+
       <div style="display: flex; gap: 0.75rem;">
         <button type="submit" class="btn btn-primary" style="padding: 0.625rem 1.25rem; font-size: 0.9375rem; font-weight: 600;">
           Save Changes

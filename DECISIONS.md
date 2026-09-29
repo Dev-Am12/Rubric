@@ -24,6 +24,9 @@ that says so explicitly, so the history stays honest.
 - [14. Session cookie Secure flag is opt-in for local container adoptability](#14-session-cookie-secure-flag-is-opt-in-for-local-container-adoptability)
 - [15. Single active event model with explicit organizer switching](#15-single-active-event-model-with-explicit-organizer-switching)
 - [16. Offline CI evidence blocks container egress and checks the block](#16-offline-ci-evidence-blocks-container-egress-and-checks-the-block)
+- [17. Public voting supports open-link and authenticated access only](#17-public-voting-supports-open-link-and-authenticated-access-only)
+- [18. Vote budgets are configurable and withdrawal restores capacity](#18-vote-budgets-are-configurable-and-withdrawal-restores-capacity)
+- [19. Voter fingerprints minimize stored identity while preserving rate limits](#19-voter-fingerprints-minimize-stored-identity-while-preserving-rate-limits)
 
 ---
 
@@ -189,3 +192,33 @@ To ensure safety against accidental disruption, event creation explicitly leaves
 **Rationale:** Detaching a container from Docker's default bridge does not prove that it cannot reach the network; another attached network or a runtime path could still provide egress. The check must observe the actual boundary it claims to verify. The control request and matching firewall counter make a blocked request distinguishable from an offline report that happened to match for unrelated reasons. This evidence assumes the GitHub-hosted Ubuntu runner's Docker bridge traffic passes through the IPv4 `DOCKER-USER` chain; the job fails if that chain or counter is unavailable.
 
 **In plain terms:** CI downloads everything first, then blocks the app container's public network traffic and proves a request hit that block before saying the app ran offline.
+
+---
+
+## 17. Public voting supports open-link and authenticated access only
+
+**Decision:** Per-event public voting supports OPEN link access and AUTH authenticated-user access. Email-gated access is unavailable.
+
+**Rationale:** The deployment must function offline, so a mode that depends on sending verification email would either fail or make an unverifiable identity claim. The two supported modes make the tradeoff explicit: OPEN is easy to access but has weaker resistance to repeat identities; AUTH ties a vote to an account. We do not represent email delivery as an available control.
+
+**In plain terms:** Voters can use an open link or sign in. There is no email-code mode because the system must work without an email service.
+
+---
+
+## 18. Vote budgets are configurable and withdrawal restores capacity
+
+**Decision:** Each event may set a per-voter total vote budget. A null budget means there is no total cap beyond one vote per project. A voter may withdraw a vote while the window is open, and the withdrawn vote no longer consumes budget.
+
+**Rationale:** A fixed cap would force every event into the same ballot design. A configurable budget makes that choice explicit, while withdrawal allows voters to correct a choice without permitting repeated active votes on the same project. Every accepted vote and withdrawal is retained in the append-only attempt history. Quadratic voting is out of scope; each active vote has weight one.
+
+**In plain terms:** Organizers can choose how many projects each person may vote for; voters can take a vote back before the deadline and use that slot elsewhere.
+
+---
+
+## 19. Voter fingerprints minimize stored identity while preserving rate limits
+
+**Decision:** OPEN mode stores an HMAC fingerprint derived from a per-event secret seed, `REMOTE_ADDR`, and user-agent. AUTH mode stores the user's id string. Raw IP addresses and user-agent strings are not persisted, and forwarded IP headers are not trusted by default.
+
+**Rationale:** The fingerprint supports duplicate checks and sliding-window rate limits without retaining raw network identifiers. It is not a durable proof of personhood: VPNs, changing networks or clients can create new OPEN fingerprints, and shared addresses/clients can cause legitimate voters to collide. Proxy deployments need explicit trusted-proxy handling before IP-based distinctions can be relied upon. AUTH mode provides the stronger identity link. Audit payloads contain only a truncated hash of the fingerprint.
+
+**In plain terms:** The system keeps a keyed identifier instead of raw network details. That slows casual repeat voting but cannot stop a determined person from changing networks or devices.

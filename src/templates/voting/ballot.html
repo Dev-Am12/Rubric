@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Vote · {{ ballot.event.name }}{% endblock %}
+{% block content %}
+<main class="page-container">
+  <h1>Vote in {{ ballot.event.name }}</h1>
+  {% if ballot.voting_open %}
+    <p>Voting is open. {% if ballot.remaining_budget is None %}There is no overall vote cap.{% else %}{{ ballot.remaining_budget }} votes remain.{% endif %}</p>
+  {% else %}
+    <p>Voting is not open right now.</p>
+  {% endif %}
+  <ol>
+    {% for project in ballot.projects %}
+      <li>
+        <a href="/projects/{{ project.id }}">{{ project.title }}</a> — {{ project.track.name }}
+        {% if project.id in ballot.cast_project_ids %}
+          <span>Voted</span>
+          {% if ballot.voting_open %}
+            <form method="post" action="/vote/{{ ballot.event.slug }}/{{ project.id }}/withdraw">
+              {% csrf_token %}<button type="submit">Withdraw vote</button>
+            </form>
+          {% endif %}
+        {% elif ballot.voting_open %}
+          {% if ballot.remaining_budget is None or ballot.remaining_budget > 0 %}
+            <form method="post" action="/vote/{{ ballot.event.slug }}/{{ project.id }}">
+              {% csrf_token %}<button type="submit">Vote</button>
+            </form>
+          {% endif %}
+        {% endif %}
+      </li>
+    {% empty %}
+      <li>No eligible submissions are available.</li>
+    {% endfor %}
+  </ol>
+</main>
+{% endblock %}

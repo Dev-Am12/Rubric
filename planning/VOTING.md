@@ -1,19 +1,19 @@
 # DogFood 2026 — T3: Voting, Abuse Model, Threat Model (backlog item 5)
 
-**Rev 2 · 2026-09-25 · Status: design only, no code yet — incorporates fixes from STRESS-TEST.md (F10, F11)**
+**Rev 3 · 2026-09-29 · Status: backend implemented and verified; polished dashboard/UI remains Phase 2.2 — incorporates fixes from STRESS-TEST.md (F10, F11) and owner decisions for offline access modes, budgets, and withdrawal**
 Depends on SCHEMA.md (§1.3) and RESEARCH §7.4. **Governing constraint for this whole file (RESEARCH A14): `run.py` never checks T3 at all.** Every mechanism here has to be demonstrable by a human in under a minute — that's policy V-06 below, and it's the design principle that shapes this backlog item more than any other, because it's the only credit channel T3 has.
 
 ---
 
 ## 1. Voting policies (stated before implementation)
 
-**V-01 — Vote uniqueness is enforced per access mode, with one uniform mechanism.** `Vote` carries `(event_id, project_id, mode, voter_fingerprint)` as a single compound unique constraint — no partial indexes needed, because `mode` is already part of the key and `voter_fingerprint` simply *means* something different per mode: open-link → salted hash of `(per-event rotating salt, ip, user_agent)`; email-gated → hash of the HMAC-verified email; authenticated → the user's id as a string. (Simpler than the partial-index approach in RESEARCH §7.4's first draft — same guarantee, one index instead of three.)
+**V-01 — Vote uniqueness is enforced per access mode, with one uniform mechanism.** `Vote` carries `(event_id, project_id, mode, voter_fingerprint)` as a single compound unique constraint — no partial indexes needed, because `mode` is already part of the key and `voter_fingerprint` means something different per supported mode: open-link → HMAC of `(per-event secret salt, REMOTE_ADDR, user_agent)`; authenticated → the user's id as a string. Email-gated voting is not implemented because this deployment must work offline.
 
-**V-02 — Results are gated at the query layer, on every request, not by an unlinked page.** No cached or pre-rendered public tally exists anywhere that could leak before the window closes; the same `services.voting.get_results(actor)` function is the only path to a tally, and it checks `actor.is_organizer or event.voting_closed` before returning anything. **Once closed, results are public to everyone — no separate toggle** (fixed by the stress test, F10: an earlier draft implied a configurable option here that was never actually specified anywhere).
+**V-02 — Results are gated at the query layer, on every request, not by an unlinked page.** No cached or pre-rendered public tally exists anywhere that could leak before the window closes; the same `services.voting.get_results(actor, event)` function is the only path to a tally, and it checks organizer status or that a non-null `voting_closes_at` has passed before returning anything. A null close time keeps results private to organizers. **Once closed, results are public to everyone — no separate toggle** (fixed by the stress test, F10: an earlier draft implied a configurable option here that was never actually specified anywhere).
 
 **V-03 — Ballot order is per-voter deterministic, not globally random.** `ORDER BY hmac(project_id, event.voting_seed || voter_fingerprint)` — refreshing never re-rolls a favorable position for one voter, and different voters see genuinely different orders.
 
-**V-04 — Rate limiting is server-side, mode-aware, and its own audit trail.** A sliding-window cap per fingerprint (default: 5 attempts/minute) defends the open-link mode specifically, since email-gated/authenticated modes are already capped by the one-vote-per-identity constraint itself. Every attempt — accepted or rejected, and why — is logged (§2.2), not just the successful ones.
+**V-04 — Rate limiting is server-side, mode-aware, and its own audit trail.** A sliding-window cap per fingerprint (default: 5 attempts/minute) defends open-link voting. Every attempt — accepted or rejected, and why — is logged (§2.2), not just the successful ones. Events may also configure a vote budget per voter; a null budget means no cap beyond one vote per project, and a withdrawn vote frees one budget slot while voting is open.
 
 **V-05 — Comments are flag-and-hide, never flag-and-delete.** Same principle as D-02: a flagged comment disappears from the public view but stays in the database and the organizer's view, permanently, for the same reason we never silently delete a duplicate submission.
 
@@ -31,24 +31,24 @@ A cleaner mechanism than the original sketch: instead of a separate `Vote` + `Vo
 | field | type | notes |
 |---|---|---|
 | id, event_id, project_id | | |
-| mode | enum: OPEN / EMAIL / AUTH | |
+| mode | enum: OPEN / AUTH | |
 | voter_fingerprint | text | see V-01 |
-| outcome | enum: ACCEPTED / REJECTED_DUPLICATE / REJECTED_RATE_LIMIT / REJECTED_CLOSED | |
+| outcome | enum: ACCEPTED / REJECTED_DUPLICATE / REJECTED_RATE_LIMIT / REJECTED_CLOSED / REJECTED_BUDGET / WITHDRAWN | |
 | created_at | timestamp | indexed with `(fingerprint, created_at)` for the sliding-window query |
 
 **Vote** (written only alongside an ACCEPTED `VoteAttempt`, same transaction)
 | field | type | notes |
 |---|---|---|
 | id, event_id, project_id, mode, voter_fingerprint | | |
-| weight | numeric, default 1 | reserved for a future QV mode, off by default (RESEARCH §7.4's Sybil math is why QV stays restricted to AUTH mode if ever enabled) |
-| attempt_id | FK → VoteAttempt | |
+| weight | numeric, default 1 | fixed at 1; quadratic voting is out of scope |
+| attempt_id | nullable FK → VoteAttempt | nullable only during the atomic insert sequence; linked before commit |
 | created_at | timestamp | |
 | **unique(event_id, project_id, mode, voter_fingerprint)** | | V-01, replaces the earlier partial-index sketch |
 
 **Comment**
 | field | type | notes |
 |---|---|---|
-| id, project_id, author_id (nullable), body, created_at | | |
+| id, project_id, author_id (nullable), mode, voter_fingerprint, body, created_at | | |
 | is_flagged | bool, default false | V-05 |
 
 ---
@@ -69,8 +69,7 @@ Following the playbook's strongest write-up pattern: name what we stopped **and*
 | A superseded duplicate submission collecting votes | V-07 |
 
 ### 3.2 Explicitly NOT stopped (the honest gap — spec.md rewards this directly, and it's real differentiation per RESEARCH §7.0/PLAN §1.2)
-- **Fingerprint rotation defeats open-link dedup.** An attacker using a VPN or rotating browser fingerprints can vote more than once in open-link mode — this is inherent to any identity-free voting mode on any platform, not a bug specific to us. The honest mitigation is *offering* email-gated or authenticated modes as the stronger options and saying so plainly, not claiming open-link is Sybil-proof.
-- **Email-gated mode trusts that the organizer's participant/judge list wasn't itself compromised**, and verifies only "received and clicked a link at that address," not deeper identity proof — standard and proportionate for a hackathon vote, explicitly not claimed to be more than that.
+- **Fingerprint rotation defeats open-link dedup.** An attacker using a VPN, a different client, or rotating network/browser fingerprints can vote more than once in open-link mode. The fingerprint is keyed per event and raw IP/user-agent values are not stored, but a shared network can also cause legitimate voters to share an identity. `REMOTE_ADDR` is used directly; deployments behind a proxy must configure trusted request handling before relying on client IP distinctions. Authenticated mode is the stronger available choice; email-gated mode is intentionally unavailable because the deployment must work offline.
 - **Judge collusion is not technically preventable by any platform.** Our answer is *detectability*, not prevention: an anomalously tight, high-agreement pattern between two specific judges would be visible to an organizer via the disagreement-heatmap/rank-uncertainty features (priority #2/#3 signature features, DL-019) once built — we name this as a limitation with a partial, honest mitigation, not a solved problem.
 - **Submission scraping of the public gallery is not defended against** beyond ordinary reasonable rate limits — the gallery is deliberately public per T1's own requirement, so we don't add anti-scraping measures that would work against that goal.
 
@@ -93,4 +92,4 @@ Following the playbook's strongest write-up pattern: name what we stopped **and*
 ## 5. Open items for G6
 
 - Default rate-limit threshold (5/minute proposed) — revisit once the judge/organizer UI is drawn, since the right number depends on how voting is actually presented (one ballot page vs. per-project buttons).
-- Whether comment authorship is ever anonymous in open-link voting mode, or comments require at least email-gated identity — leaning: comments follow whatever mode the vote itself used, no separate policy, simplest to defend in JUDGING.md §6 (fixed by the stress test, F11 — there is no separate THREAT-MODEL.md file; DOCS-PLAN.md folded this into JUDGING.md specifically to avoid two files claiming the same things).
+- Comments use the same OPEN/AUTH identity mode as voting; OPEN comments may be anonymous.

@@ -59,6 +59,36 @@
       </div>
     </section>
 
+    {% if project.status == 'SUBMITTED' %}
+      <section class="detail-section" id="project-comments">
+        <h2>Comments</h2>
+        {% for comment in comments %}
+          <article class="card" style="margin: 0.75rem 0; padding: 1rem;">
+            <p>{{ comment.body }}</p>
+            <small>{{ comment.author.display_name|default:"Open-link voter" }} · {{ comment.created_at|date:"M d, Y H:i" }}</small>
+            {% if is_org %}
+              {% if comment.is_flagged %}<strong>Hidden from public</strong>{% endif %}
+              <form method="post" action="/api/v1/organizer/comments/{{ comment.id }}/flag">
+                {% csrf_token %}
+                <input type="hidden" name="flagged" value="{% if comment.is_flagged %}false{% else %}true{% endif %}">
+                <button type="submit">{% if comment.is_flagged %}Unhide{% else %}Flag and hide{% endif %}</button>
+              </form>
+            {% endif %}
+          </article>
+        {% empty %}
+          <p>No comments yet.</p>
+        {% endfor %}
+        {% if can_comment %}
+          <form method="post" action="/projects/{{ project.id }}/comments">
+            {% csrf_token %}
+            <label for="comment-body">Add a comment</label>
+            <textarea id="comment-body" name="body" maxlength="2000" required></textarea>
+            <button type="submit">Post comment</button>
+          </form>
+        {% endif %}
+      </section>
+    {% endif %}
+
     {% if project.custom_answers %}
       <section class="detail-section">
         <h2>Additional Information</h2>

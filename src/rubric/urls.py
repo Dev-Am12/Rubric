@@ -55,6 +55,15 @@ from submissions.views import (
     project_edit_view,
     my_submissions_view,
 )
+from voting.views import (
+    ballot_view as public_voting_ballot_view,
+    cast_view,
+    withdraw_view,
+    results_view,
+    project_comment_view,
+    organizer_comment_flag_view,
+    organizer_voting_summary_view,
+)
 
 # Admin is intentionally not shipped (PLAN.md P-08)
 urlpatterns = [
@@ -109,6 +118,17 @@ urlpatterns = [
     path('projects/<int:id>', project_detail_view, name='project_detail'),
     path('projects/<int:id>/edit', project_edit_view, name='project_edit'),
     path('my/submissions', my_submissions_view, name='my_submissions'),
+    path('projects/<int:project_id>/comments', project_comment_view, name='project_comment_create'),
+
+    # -----------------------------------------------------------------------
+    # Public voting (T3; identity, rate limits, and visibility in services.voting)
+    # -----------------------------------------------------------------------
+    path('vote/<slug:event_slug>', public_voting_ballot_view, name='voting_ballot'),
+    path('vote/<slug:event_slug>/<int:project_id>', cast_view, name='voting_cast'),
+    path('vote/<slug:event_slug>/<int:project_id>/withdraw', withdraw_view, name='voting_withdraw'),
+    path('results/<slug:event_slug>', results_view, name='voting_results'),
+    path('api/v1/organizer/comments/<int:comment_id>/flag', organizer_comment_flag_view, name='organizer_comment_flag'),
+    path('api/v1/organizer/voting/summary', organizer_voting_summary_view, name='organizer_voting_summary'),
 
     # -----------------------------------------------------------------------
     # P-11 routes (API.md §1, .dogfood.toml)

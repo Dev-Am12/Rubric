@@ -20,6 +20,7 @@ from events.services import current_event
 from submissions.models import Project, ProjectStatus
 from submissions import services as submissions_services
 from teams.models import Team, TeamMembership
+from services import voting as voting_services
 
 
 def _is_team_member(actor, team):
@@ -81,6 +82,8 @@ def project_detail_view(request, id):
         'project': project,
         'is_owner': is_owner,
         'is_org': is_org,
+        'comments': voting_services.comments_for_project_page(request.actor, project),
+        'can_comment': not is_org,
     })
 
 

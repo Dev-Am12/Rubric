@@ -18,7 +18,7 @@ from django.utils.text import slugify
 
 from accounts.actors import require, PermissionDenied
 from accounts.models import EventMembership, EventRole
-from events.models import Event, Track, Prize
+from events.models import Event, Track, Prize, VotingAccess
 
 
 def current_event():
@@ -132,6 +132,8 @@ def create_event(
             'slug': event.slug,
             'name': event.name,
             'submissions_close_at': event.submissions_close_at.isoformat() if event.submissions_close_at else None,
+            'voting_access': event.voting_access,
+            'votes_per_voter': event.votes_per_voter,
             'is_current': event.is_current,
         })
 
@@ -147,6 +149,8 @@ def update_event(
     submissions_close_at=...,
     voting_opens_at=...,
     voting_closes_at=...,
+    voting_access=...,
+    votes_per_voter=...,
 ):
     """
     Update an event's name and dates. Organizer-only.
@@ -167,12 +171,31 @@ def update_event(
         'submissions_close_at': event.submissions_close_at.isoformat() if event.submissions_close_at else None,
         'voting_opens_at': event.voting_opens_at.isoformat() if event.voting_opens_at else None,
         'voting_closes_at': event.voting_closes_at.isoformat() if event.voting_closes_at else None,
+        'voting_access': event.voting_access,
+        'votes_per_voter': event.votes_per_voter,
     }
 
     new_sub_open = event.submissions_open_at if submissions_open_at is Ellipsis else _check_datetime(submissions_open_at, 'submissions_open_at')
     new_sub_close = event.submissions_close_at if submissions_close_at is Ellipsis else _check_datetime(submissions_close_at, 'submissions_close_at')
     new_vote_open = event.voting_opens_at if voting_opens_at is Ellipsis else _check_datetime(voting_opens_at, 'voting_opens_at')
     new_vote_close = event.voting_closes_at if voting_closes_at is Ellipsis else _check_datetime(voting_closes_at, 'voting_closes_at')
+    new_voting_access = event.voting_access if voting_access is Ellipsis else str(voting_access).upper()
+    new_vote_budget = event.votes_per_voter if votes_per_voter is Ellipsis else votes_per_voter
+
+    if new_voting_access not in VotingAccess.values:
+        raise ValueError('voting_access must be OPEN or AUTH.')
+    if new_vote_budget is not None:
+        if isinstance(new_vote_budget, bool):
+            raise ValueError('votes_per_voter must be a non-negative integer or blank.')
+        if isinstance(new_vote_budget, str):
+            normalized_budget = new_vote_budget.strip()
+            if not normalized_budget.isdecimal():
+                raise ValueError('votes_per_voter must be a non-negative integer or blank.')
+            new_vote_budget = int(normalized_budget)
+        elif not isinstance(new_vote_budget, int):
+            raise ValueError('votes_per_voter must be a non-negative integer or blank.')
+        if new_vote_budget < 0:
+            raise ValueError('votes_per_voter must be a non-negative integer or blank.')
 
     if new_sub_close is None:
         raise ValueError("submissions_close_at cannot be None.")
@@ -195,6 +218,10 @@ def update_event(
             event.voting_opens_at = new_vote_open
         if voting_closes_at is not Ellipsis:
             event.voting_closes_at = new_vote_close
+        if voting_access is not Ellipsis:
+            event.voting_access = new_voting_access
+        if votes_per_voter is not Ellipsis:
+            event.votes_per_voter = new_vote_budget
         event.save()
 
         after = {
@@ -204,6 +231,8 @@ def update_event(
             'submissions_close_at': event.submissions_close_at.isoformat() if event.submissions_close_at else None,
             'voting_opens_at': event.voting_opens_at.isoformat() if event.voting_opens_at else None,
             'voting_closes_at': event.voting_closes_at.isoformat() if event.voting_closes_at else None,
+            'voting_access': event.voting_access,
+            'votes_per_voter': event.votes_per_voter,
         }
 
         audit.record(actor, 'event.update', event, {

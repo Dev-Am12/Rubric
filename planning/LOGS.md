@@ -361,8 +361,19 @@ un.py T1/T2 check. Temporary database and server log files were removed afterwar
 - Live acceptance report:
   - `run.py .dogfood.toml` executed live against local server: all checks PASS (T1 and T2 verified).
 - Full test suite results:
-  - SQLite (default): 205 tests passed, 0 failures, 0 errors (1 skipped).
-  - PostgreSQL (`postgresql://rubric:rubric_dev_only@localhost:5432/rubric_dev`): 205 tests passed, 0 failures, 0 errors (0 skipped).
+- SQLite (default): 205 tests passed, 0 failures, 0 errors (1 skipped).
+- PostgreSQL (`postgresql://rubric:rubric_dev_only@localhost:5432/rubric_dev`): 205 tests passed, 0 failures, 0 errors (0 skipped).
+
+## 2026-09-29 — Phase 2.1: T3 voting backend
+
+- Added per-event OPEN/AUTH voting settings, random per-event fingerprint/order seed (including a data migration), nullable vote budget, vote withdrawal, append-only attempt outcomes, unique vote constraint, comments with flag-and-hide moderation, service-layer result gating, and the requested ballot/cast/withdraw/results/comment/organizer routes.
+- Public OPEN fingerprints are HMACs of the event seed, `REMOTE_ADDR`, and user-agent. The service receives only those request values; it does not trust `X-Forwarded-For`. Raw IP and user-agent values are not written to vote, attempt, comment, or audit rows. This is not strong identity proof: network/client changes can evade duplicate limits, while shared network/client details can collide.
+- Organizer event settings now audit before/after access mode and vote budget. The fixture event's voting dates and `submissions_close_at` were not changed.
+- Bare anonymous `curl -X POST` requests without a CSRF cookie/token receive HTTP 403 from Django CSRF middleware before the voting service runs. This is expected for browser-style anonymous POSTs; a browser must first fetch a page and submit its CSRF token. A bearer-authenticated request follows the existing CSRF bypass path.
+- Focused SQLite voting suite: 18 tests passed. Initial concurrency assertions showed the shared 5-attempt/minute limit correctly classifying some race losers as rate-limited before duplicate/budget checks; tests now assert the exact number of surviving votes and permit the applicable rejection outcomes.
+- T3 dashboard response is implemented as the organizer summary API; the polished dashboard surface remains Phase 2.2.
+- Full suite verification: SQLite — `Ran 224 tests in 40.157s`, `OK (skipped=1)`; PostgreSQL — `Ran 224 tests in 165.086s`, `OK`. The Postgres concurrency tests use `AuditTransactionTestCase` so the production audit TRUNCATE trigger is disabled only during test flush and re-enabled immediately afterward.
+- The first live `run.py` attempt returned 500s because the configured local `rubric_dev` Postgres schema had not yet applied `events.0004_voting_settings` / `voting.0001_initial`; applied those migrations, then reran successfully: T1 gallery public, fixture project shown, closed submissions, T2 own scores, peer-score denial, participant denial, and CSV export all PASS. Portal was `http://localhost:8080`; `claimed = []` stayed unchanged. No fixture voting dates were seeded or altered.
 
 
 

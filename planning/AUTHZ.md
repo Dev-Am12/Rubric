@@ -86,13 +86,21 @@ services.judging.get_scores(actor, judge_external_id=None):
 The own-score query filters by the authenticated user because non-fixture judges may have `external_id=None`; filtering by that value would collide and expose other such judges' ballots.
 Both `routes.judge_scores` and `routes.peer_scores` in `.dogfood.toml` point at the same URL pattern with an optional query parameter — there is exactly **one** function where the check can be forgotten, and it's covered by two dedicated tests named after the real spec.md check ("judge cannot see peer scores") plus the generic matrix below.
 
-### 3.3 Public voting (T3 — never suite-verified, RESEARCH A14; build it for a human to check by hand)
+### 3.3 Public voting (T3 — mechanisms are exercised in voting tests and manually demonstrable)
 
-| Route | anon (open mode) | authenticated non-voter | organizer, during voting window | organizer, after window closes |
-|---|---|---|---|---|
-| `GET /vote/{event}` (ballot) | 200 (open mode only) | 200 | 200 | 200 |
-| `POST /vote/{event}/{project}` | 200, rate-limited | 200, rate-limited | N/A (organizers don't vote) | 403 (window closed) |
-| `GET /results` | **403 — hidden during window** | 403 | 200 | 200 (public, once closed — per event config) |
+OPEN and AUTH are the only modes. Anonymous users may read/cast/comment only in OPEN mode; authenticated users may do so in either mode. Organizers cannot cast votes or comments. A closed or unopened window rejects writes. Bearer-authenticated POSTs use the existing CSRF split; anonymous browser POSTs require a CSRF token.
+
+| Route | anonymous, OPEN during window | authenticated participant/judge during window | organizer during window | anonymous after close | authenticated after close | organizer any time |
+|---|---|---|---|---|---|---|
+| `GET /vote/{event}` | 200 (401 if mode is AUTH) | 200 | 200 | 200 | 200 | 200 |
+| `POST /vote/{event}/{project}` | 201 if accepted; service rejection status otherwise; closed maps to 401 | 201 if accepted; duplicate/budget 409, rate limit 429, closed 403 | 403 | 401 closed | 403 closed | 403 |
+| `POST /vote/{event}/{project}/withdraw` | 200 if withdrawn; closed maps to 401 | 200 if withdrawn; closed 403 | 403 | 401 closed | 403 closed | 403 |
+| `GET /results/{event}` | 401 while open | 403 while open | 200 | 200 only after a non-null close time has passed | same | 200 |
+| `POST /projects/{id}/comments` | 201 while open; 401 closed or if mode is AUTH | 201 while open; 403 closed | 403 | 401 closed | 403 closed | 403 |
+| `POST /api/v1/organizer/comments/{id}/flag` | 401 | 403 | 200 | 403 | 403 | 200 |
+| `GET /api/v1/organizer/voting/summary` | 401 | 403 | 200 | 403 | 403 | 200 |
+
+If `voting_closes_at` is null, results never become public to non-organizers. In AUTH mode anonymous ballot and write calls return 401; authenticated forbidden callers return 403.
 
 ### 3.4 Stretch (T4)
 
