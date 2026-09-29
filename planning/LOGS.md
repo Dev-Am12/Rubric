@@ -438,6 +438,14 @@ un.py T1/T2 check. Temporary database and server log files were removed afterwar
 - Django checks reported no issues, `makemigrations --check --dry-run` reported no changes, and `git diff --check` was clean.
 - Live `run.py .dogfood.toml` against local `runserver 8080` and PostgreSQL: T1 gallery, fixture project, and closed-submission checks PASS; T2 own judge scores, peer-score denial, participant denial, and CSV export PASS. `claimed` remains empty.
 
+## 2026-09-29 — Phase 3.2B: pseudonymous voting and ballot controls
+
+- AUTH votes now store event-scoped HMAC pseudonyms keyed from the application secret and event seed; OPEN votes use only `REMOTE_ADDR`. Vote and withdrawal audit entries omit the user actor, while retaining event, project, mode, and a truncated pseudonym hash. Comments remain attributed.
+- Opening voting now clears an expired or incompatible close time; closing voting moves a null or future opening time to the current time. Event budget updates refuse a cap below any voter's active vote count.
+- Added the OPEN-mode shared-network notice and regression coverage for voter pseudonyms, per-event identity separation, UA rotation, IP separation, ballot isolation, audit chain verification, window changes, and budget enforcement.
+- Verification: focused regressions `Ran 8 tests in 1.316s`, `OK`; full SQLite `Ran 260 tests in 93.485s`, `OK (skipped=1)`; full PostgreSQL `Ran 260 tests in 129.896s`, `OK`.
+- `makemigrations --check --dry-run`: no changes; Django system check: no issues. Live `run.py .dogfood.toml` against `runserver 8080` reported all T1/T2 checks PASS, with `claimed nothing, verified T1 T2`.
+
 
 
 

@@ -4,6 +4,9 @@
 <div class="page-header">
   <h1 class="page-title">Vote in {{ ballot.event.name }}</h1>
   <p class="page-subtitle">Projects appear in a stable, voter-specific order.</p>
+  {% if ballot.mode == 'OPEN' %}
+    <p class="page-subtitle">Open voting is best-effort: people on the same network share a ballot. Use signed-in voting when the result matters.</p>
+  {% endif %}
 </div>
 
 {% if ballot.voting_state == 'not_started' %}

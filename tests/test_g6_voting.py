@@ -163,7 +163,7 @@ class VotingFixtureTests(TestCase):
             VoteAttemptOutcome.ACCEPTED,
         )
 
-    def test_auth_mode_rejects_anonymous_and_uses_user_id_fingerprint(self):
+    def test_auth_mode_rejects_anonymous_and_uses_user_pseudonym(self):
         self.event.voting_access = 'AUTH'
         self.event.save(update_fields=['voting_access'])
         with self.assertRaises(PermissionDenied):
@@ -171,7 +171,9 @@ class VotingFixtureTests(TestCase):
         url = reverse('voting_cast', args=[self.event.slug, self.project.pk])
         self.assertEqual(self.client.post(url).status_code, 401)
         result = voting.cast(self.participant, self.event, self.project)
-        self.assertEqual(result.voter_fingerprint, str(self.participant.user.pk))
+        expected = voting._pseudonym(self.event, 'AUTH', str(self.participant.user.pk))
+        self.assertEqual(result.voter_fingerprint, expected)
+        self.assertNotEqual(result.voter_fingerprint, str(self.participant.user.pk))
 
     def test_unopened_and_closed_windows_record_rejected_closed(self):
         self.event.voting_opens_at = None

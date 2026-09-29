@@ -30,6 +30,7 @@ that says so explicitly, so the history stays honest.
 - [20. Voting access mode locks after the first recorded action](#20-voting-access-mode-locks-after-the-first-recorded-action)
 - [21. Organizers can open or close voting immediately with an audit record](#21-organizers-can-open-or-close-voting-immediately-with-an-audit-record)
 - [22. Event authority is scoped to the event being changed](#22-event-authority-is-scoped-to-the-event-being-changed)
+- [23. Voting is a secret ballot with pseudonymous voter identities](#23-voting-is-a-secret-ballot-with-pseudonymous-voter-identities)
 
 ---
 
@@ -255,3 +256,17 @@ To ensure safety against accidental disruption, event creation explicitly leaves
 **Rationale:** A role attached to the currently selected event must not authorize mutations to a different event. Checking membership against the target closes that gap while keeping the portal's existing single-organization event-switching model. Separate organization identity and URL-level tenant boundaries would require a broader product and data model.
 
 **In plain terms:** Organizers can change only events they organize, while a site administrator can manage any event in this portal.
+
+---
+
+## 23. Voting is a secret ballot with pseudonymous voter identities
+
+**Decision:** AUTH votes use a stable event-scoped HMAC pseudonym derived from the user's id, the event's voting seed, and the server's `SECRET_KEY`. OPEN votes use an event-scoped HMAC pseudonym derived from `REMOTE_ADDR` only; user-agent and forwarded-IP headers are ignored. Vote and withdrawal audit entries have no user actor and use the fixed `voter-pseudonym` label, with only a truncated pseudonym hash in the payload. Comments remain attributed because they are public speech.
+
+**Options considered:** A. Keep the previous behavior: an auditable public record with voting audit entries attributed to the account. B. Use a keyed pseudonym for votes while keeping attempts, tallies, and abuse controls auditable. C. Hide vote attribution from the public but retain it for organizers.
+
+**Rationale:** Option B is chosen because private votes reduce pressure and retaliation while preserving auditable tallies, attempts, and blocked abuse. Option A was rejected because attaching an account identity to a vote exposes a voter to pressure or retaliation. Option C was rejected because organizers can also be participants or have conflicts, so organizer-only attribution is not a reliable privacy boundary. The event seed and small user ids are available from the database; deriving the HMAC key from `SECRET_KEY` means a database-only reader cannot map AUTH pseudonyms back to users. OPEN identity uses IP only: IP plus user-agent was bypassable by rotating request headers, signed device cookies can be cleared, and CAPTCHA or proof-of-work would require external services or add voter friction. IP-only identity is the chosen offline-compatible control, with the known consequence that people behind one NAT share a ballot and rate limit.
+
+**Limits:** An operator with both the database and `SECRET_KEY` can re-derive pseudonyms. Organizers can reconstruct live tallies from the audit log, but already have access to live tallies by design. NAT co-tenants share a budget and could withdraw one another's votes from that shared ballot. AUTH mode is recommended when the result matters.
+
+**In plain terms:** Votes are not labeled with a voter's account in the audit history. Signed-in voting is private from database-only readers; open-link voting shares one ballot among people at the same public IP. The system still records voting activity for integrity checks, and the operator can connect private identities if they control both the database and application secret.

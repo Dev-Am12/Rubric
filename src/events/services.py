@@ -214,6 +214,20 @@ def update_event(
             from voting.models import Vote, VoteAttempt
             if Vote.objects.filter(event=event).exists() or VoteAttempt.objects.filter(event=event).exists():
                 raise ValueError('voting_access cannot change after voting activity has been recorded.')
+        if votes_per_voter is not Ellipsis and new_vote_budget is not None:
+            from django.db.models import Count, Max
+            from voting.models import Vote
+            highest_active_count = (
+                Vote.objects.filter(event=event)
+                .values('mode', 'voter_fingerprint')
+                .annotate(vote_count=Count('pk'))
+                .aggregate(highest=Max('vote_count'))['highest'] or 0
+            )
+            if new_vote_budget < highest_active_count:
+                raise ValueError(
+                    'votes_per_voter cannot be lower than the highest active vote count '
+                    f'for one voter ({highest_active_count}).'
+                )
 
         if name is not None:
             event.name = name

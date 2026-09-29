@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import threading
 
+from django.conf import settings
 from django.db import IntegrityError, connections, transaction
 from django.db.models import Count
 from django.utils import timezone
@@ -83,6 +84,15 @@ def _require_voter(actor, event):
         raise PermissionDenied
 
 
+def _pseudonym(event, mode, identity):
+    secret = settings.SECRET_KEY.encode('utf-8')
+    seed = event.voting_seed.encode('utf-8')
+    # The event seed and integer user ids are stored/guessable; SECRET_KEY makes a database-only copy insufficient to map ballots back to users.
+    key = hmac.new(secret, b'rubric-vote-v1|' + seed, hashlib.sha256).digest()
+    message = f'{mode}|{identity}'.encode('utf-8')
+    return hmac.new(key, message, hashlib.sha256).hexdigest()
+
+
 def _fingerprint(actor, event, *, ip=None, user_agent=None, fingerprint=None):
     if fingerprint is not None:
         value = str(fingerprint).strip()
@@ -92,12 +102,12 @@ def _fingerprint(actor, event, *, ip=None, user_agent=None, fingerprint=None):
     if event.voting_access == VotingAccess.AUTH:
         if actor.is_anonymous or getattr(actor.user, 'pk', None) is None:
             raise PermissionDenied
-        return str(actor.user.pk)
+        identity = str(actor.user.pk)
+    else:
+        # OPEN identity uses only REMOTE_ADDR; X-Forwarded-For is untrusted. NAT co-tenants share a ballot.
+        identity = str(ip or '')
 
-    # The event's random seed is also the per-event secret salt for OPEN identities.
-    # Deliberately use only REMOTE_ADDR, supplied by the view; X-Forwarded-For is untrusted.
-    identity = f'{ip or ""}\0{user_agent or ""}'.encode('utf-8')
-    return hmac.new(event.voting_seed.encode('utf-8'), identity, hashlib.sha256).hexdigest()
+    return _pseudonym(event, _mode(event), identity)
 
 
 def _audit_fingerprint(fingerprint):
@@ -250,7 +260,7 @@ def cast(actor, event, project, *, ip=None, user_agent=None, fingerprint=None):
             vote.save(update_fields=['attempt'])
 
             from services import audit
-            audit.record(actor, 'voting.vote_cast', vote, {
+            audit.record(None, 'voting.vote_cast', vote, {
                 'event_id': event.pk,
                 'project_id': project.pk,
                 'mode': mode,
@@ -296,7 +306,7 @@ def withdraw(actor, event, project, *, ip=None, user_agent=None, fingerprint=Non
                 VoteAttemptOutcome.WITHDRAWN, at=now,
             )
             from services import audit
-            audit.record(actor, 'voting.vote_withdrawn', project, {
+            audit.record(None, 'voting.vote_withdrawn', project, {
                 'event_id': event.pk,
                 'project_id': project.pk,
                 'mode': mode,
@@ -406,8 +416,12 @@ def _set_voting_window_now(actor, event, *, open_window):
         now = timezone.now()
         if open_window:
             event.voting_opens_at = now
+            if event.voting_closes_at is not None and event.voting_closes_at <= now:
+                event.voting_closes_at = None
             action = 'event.voting_opened_now'
         else:
+            if event.voting_opens_at is None or event.voting_opens_at > now:
+                event.voting_opens_at = now
             event.voting_closes_at = now
             action = 'event.voting_closed_now'
         event.save(update_fields=['voting_opens_at', 'voting_closes_at'])

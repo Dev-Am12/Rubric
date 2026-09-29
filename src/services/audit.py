@@ -37,6 +37,8 @@ def _entry_hash(*, seq, prev_hash, created_at, actor, action, target, payload):
 
 
 def _actor_identity(actor_or_label):
+    if actor_or_label is None:
+        return None, 'voter-pseudonym'
     if isinstance(actor_or_label, str):
         if not actor_or_label.strip():
             raise ValueError('A non-human actor label cannot be empty')
