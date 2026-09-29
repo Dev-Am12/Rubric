@@ -13,6 +13,8 @@ import json
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.urls import reverse
+from django.utils.http import urlencode
 
 from accounts.actors import PermissionDenied, require
 from events.models import Event, Track
@@ -78,12 +80,36 @@ def project_detail_view(request, id):
         is_owner = _is_team_member(request.actor, project.team)
         is_org = request.actor.is_organizer or request.actor.is_site_admin
 
+    voting_open = voting_services.voting_is_open(project.event)
+    is_eligible_for_public_action = (
+        project.status == ProjectStatus.SUBMITTED and project.is_duplicate_of_id is None
+    )
+    auth_required = project.event.voting_access == 'AUTH' and request.actor.is_anonymous
+    show_comment_login = auth_required and voting_open and is_eligible_for_public_action and not is_org
+    can_comment = (
+        not is_org and voting_open and is_eligible_for_public_action and not auth_required
+    )
+    comment_login_url = f"{reverse('login')}?{urlencode({'next': request.get_full_path()})}"
+    if not is_eligible_for_public_action:
+        comment_status = 'Comments are available on eligible submitted projects.'
+    elif is_org:
+        comment_status = 'Organizer accounts cannot comment.'
+    elif not voting_open:
+        comment_status = 'Comments are available while voting is open.'
+    elif auth_required:
+        comment_status = None
+    else:
+        comment_status = None
+
     return render(request, 'submissions/project_detail.html', {
         'project': project,
         'is_owner': is_owner,
         'is_org': is_org,
         'comments': voting_services.comments_for_project_page(request.actor, project),
-        'can_comment': not is_org,
+        'can_comment': can_comment,
+        'comment_status': comment_status,
+        'comment_auth_required': show_comment_login,
+        'comment_login_url': comment_login_url,
     })
 
 

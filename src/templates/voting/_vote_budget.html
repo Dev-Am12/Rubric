@@ -1,0 +1,3 @@
+<span id="vote-budget"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {% if ballot.remaining_budget is None %}Vote budget: unlimited{% else %}Votes remaining: {{ ballot.remaining_budget }}{% endif %}
+</span>

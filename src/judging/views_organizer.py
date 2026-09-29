@@ -27,6 +27,7 @@ from services import assignment as assignment_services
 from services import judging as judging_services
 from services import normalization as norm_services
 from services import submissions as submission_services
+from services import voting as voting_services
 from submissions.models import Project, ProjectStatus
 
 
@@ -163,6 +164,7 @@ def organizer_dashboard_view(request):
         'duplicates': duplicates,
         'latest_norm_run': norm_run,
         'latest_assignment_run': latest_assignment,
+        'voting_summary': voting_services.integrity_summary(request.actor, event),
     }
     return render(request, 'organizer/dashboard.html', context)
 
@@ -546,6 +548,5 @@ def judge_invite_accept_view(request, token):
             'error_title': 'Error Accepting Invitation',
             'error_message': str(exc),
         }, status=400)
-
 
 

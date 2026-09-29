@@ -55,6 +55,10 @@ def _window_open(event, at=None):
     )
 
 
+def voting_is_open(event, at=None):
+    return _window_open(_event(event), at)
+
+
 def _closed_for_public_results(event, at=None):
     at = at or timezone.now()
     return event.voting_closes_at is not None and at > event.voting_closes_at
@@ -157,6 +161,14 @@ def get_ballot(actor, event, *, ip=None, user_agent=None, fingerprint=None):
     ))
     budget = event.votes_per_voter
     remaining = None if budget is None else max(0, budget - len(own_votes))
+    now = timezone.now()
+    if event.voting_closes_at and now >= event.voting_closes_at:
+        state = 'closed'
+    elif not event.voting_opens_at or now < event.voting_opens_at:
+        state = 'not_started'
+    else:
+        state = 'open'
+    can_vote = not _organizer_for(actor, event)
     return {
         'event': event,
         'mode': mode,
@@ -165,7 +177,9 @@ def get_ballot(actor, event, *, ip=None, user_agent=None, fingerprint=None):
         'cast_project_ids': own_project_ids,
         'vote_budget': budget,
         'remaining_budget': remaining,
-        'voting_open': _window_open(event),
+        'voting_open': state == 'open',
+        'voting_state': state,
+        'can_vote': can_vote,
     }
 
 
@@ -338,9 +352,14 @@ def comment(actor, project, body, *, ip=None, user_agent=None, fingerprint=None)
                 actor, event, ip=ip, user_agent=user_agent, fingerprint=fingerprint,
             )
             try:
-                project = Project.objects.select_for_update().get(pk=project_id, event=event)
+                project = Project.objects.select_for_update().get(
+                    pk=project_id,
+                    event=event,
+                    status=ProjectStatus.SUBMITTED,
+                    is_duplicate_of__isnull=True,
+                )
             except Project.DoesNotExist:
-                raise ValueError('Project not found.')
+                raise PermissionDenied
             now = timezone.now()
             if not _window_open(event, now):
                 return _record_attempt(
@@ -375,6 +394,41 @@ def comment(actor, project, body, *, ip=None, user_agent=None, fingerprint=None)
                 'attempt_id': attempt.pk,
             })
             return comment
+
+
+def _set_voting_window_now(actor, event, *, open_window):
+    from services import audit
+
+    event = _event(event)
+    with transaction.atomic():
+        event = _event_row_for_update(event.pk)
+        require(actor, _organizer_for(actor, event))
+        before = {
+            'voting_opens_at': event.voting_opens_at.isoformat() if event.voting_opens_at else None,
+            'voting_closes_at': event.voting_closes_at.isoformat() if event.voting_closes_at else None,
+        }
+        now = timezone.now()
+        if open_window:
+            event.voting_opens_at = now
+            action = 'event.voting_opened_now'
+        else:
+            event.voting_closes_at = now
+            action = 'event.voting_closed_now'
+        event.save(update_fields=['voting_opens_at', 'voting_closes_at'])
+        after = {
+            'voting_opens_at': event.voting_opens_at.isoformat() if event.voting_opens_at else None,
+            'voting_closes_at': event.voting_closes_at.isoformat() if event.voting_closes_at else None,
+        }
+        audit.record(actor, action, event, {'before': before, 'after': after})
+    return event
+
+
+def open_voting_now(actor, event):
+    return _set_voting_window_now(actor, event, open_window=True)
+
+
+def close_voting_now(actor, event):
+    return _set_voting_window_now(actor, event, open_window=False)
 
 
 def public_comments(actor, project):

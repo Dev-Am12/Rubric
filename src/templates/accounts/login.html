@@ -14,6 +14,10 @@
       </p>
     </div>
 
+    {% if request.GET.voting_required %}
+      <div class="banner banner-warning" role="status">This event requires a signed-in voter. Sign in to continue to the ballot.</div>
+    {% endif %}
+
     {% if error %}
       <div id="login-error" style="background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 10px 14px; border-radius: 6px; font-size: 0.875rem; margin-bottom: var(--space-md);">
         {{ error }}

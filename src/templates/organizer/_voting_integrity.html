@@ -1,0 +1,22 @@
+<div class="detail-section" style="margin-top: var(--space-md);">
+  <p><strong>accepted actions (votes + comments):</strong> {{ summary.outcomes.ACCEPTED|default:0 }}</p>
+  <ul aria-label="Voting action outcomes">
+    {% for outcome, count in summary.outcomes.items %}
+      <li>{{ outcome|cut:"_"|lower|capfirst }}: <span data-outcome="{{ outcome }}">{{ count }}</span></li>
+    {% endfor %}
+  </ul>
+  <h3 style="margin-top: var(--space-md);">Blocked attempts by project</h3>
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead><tr><th scope="col" style="text-align: left;">Project</th><th scope="col" style="text-align: right;">Blocked attempts</th></tr></thead>
+    <tbody>
+      {% for project in summary.projects %}
+        <tr data-project-id="{{ project.project_id }}">
+          <td><a href="{% url 'project_detail' project.project_id %}">{{ project.title }}</a>{% if project.external_id %} ({{ project.external_id }}){% endif %}</td>
+          <td data-blocked-count="{{ project.project_id }}" style="text-align: right;">{{ project.blocked_attempts }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="2">No projects are available.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

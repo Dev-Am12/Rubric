@@ -6,6 +6,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from accounts.actors import require
 from events.models import Event, Track, Prize
 from events import services as events_services
+from services import voting as voting_services
 
 
 def _check_organizer(actor):
@@ -104,6 +105,20 @@ def organizer_event_dates_view(request, event_id):
         "event": event,
         "error_message": error_message,
     })
+
+
+@require_POST
+def organizer_open_voting_now_view(request, event_id):
+    event = get_object_or_404(Event, pk=event_id)
+    voting_services.open_voting_now(request.actor, event)
+    return redirect('organizer_event_dates', event_id=event.pk)
+
+
+@require_POST
+def organizer_close_voting_now_view(request, event_id):
+    event = get_object_or_404(Event, pk=event_id)
+    voting_services.close_voting_now(request.actor, event)
+    return redirect('organizer_event_dates', event_id=event.pk)
 
 
 @require_http_methods(["GET", "POST"])

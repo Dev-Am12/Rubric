@@ -27,6 +27,8 @@ that says so explicitly, so the history stays honest.
 - [17. Public voting supports open-link and authenticated access only](#17-public-voting-supports-open-link-and-authenticated-access-only)
 - [18. Vote budgets are configurable and withdrawal restores capacity](#18-vote-budgets-are-configurable-and-withdrawal-restores-capacity)
 - [19. Voter fingerprints minimize stored identity while preserving rate limits](#19-voter-fingerprints-minimize-stored-identity-while-preserving-rate-limits)
+- [20. Voting access mode locks after the first recorded action](#20-voting-access-mode-locks-after-the-first-recorded-action)
+- [21. Organizers can open or close voting immediately with an audit record](#21-organizers-can-open-or-close-voting-immediately-with-an-audit-record)
 
 ---
 
@@ -222,3 +224,23 @@ To ensure safety against accidental disruption, event creation explicitly leaves
 **Rationale:** The fingerprint supports duplicate checks and sliding-window rate limits without retaining raw network identifiers. It is not a durable proof of personhood: VPNs, changing networks or clients can create new OPEN fingerprints, and shared addresses/clients can cause legitimate voters to collide. Proxy deployments need explicit trusted-proxy handling before IP-based distinctions can be relied upon. AUTH mode provides the stronger identity link. Audit payloads contain only a truncated hash of the fingerprint.
 
 **In plain terms:** The system keeps a keyed identifier instead of raw network details. That slows casual repeat voting but cannot stop a determined person from changing networks or devices.
+
+---
+
+## 20. Voting access mode locks after the first recorded action
+
+**Decision:** An event's OPEN/AUTH access mode cannot change once any vote or vote attempt exists for that event.
+
+**Rationale:** The mode defines voter identity and uniqueness. Changing it after activity could reinterpret existing fingerprints or allow a second identity path to create votes for projects already handled under the previous mode. Locking it after the first recorded attempt keeps the event's identity rule stable, including when the first attempt was rejected.
+
+**In plain terms:** Choose open-link or signed-in voting before activity starts; after the first attempt, the event keeps that identity rule.
+
+---
+
+## 21. Organizers can open or close voting immediately with an audit record
+
+**Decision:** Organizers have explicit Open voting now and Close voting now actions. Each updates only the corresponding voting timestamp and records before/after values in the audit log.
+
+**Rationale:** Date fields remain useful for scheduling, while an immediate action gives organizers a direct response to a live event. Recording the exact timestamp and actor makes these operational changes reviewable. The submissions deadline remains independent.
+
+**In plain terms:** An organizer can start or stop voting with one action, and the audit history shows when it happened without changing the submission deadline.

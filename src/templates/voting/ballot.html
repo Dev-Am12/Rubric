@@ -1,35 +1,27 @@
 {% extends "base.html" %}
 {% block title %}Vote · {{ ballot.event.name }}{% endblock %}
 {% block content %}
-<main class="page-container">
-  <h1>Vote in {{ ballot.event.name }}</h1>
-  {% if ballot.voting_open %}
-    <p>Voting is open. {% if ballot.remaining_budget is None %}There is no overall vote cap.{% else %}{{ ballot.remaining_budget }} votes remain.{% endif %}</p>
-  {% else %}
-    <p>Voting is not open right now.</p>
-  {% endif %}
-  <ol>
+<div class="page-header">
+  <h1 class="page-title">Vote in {{ ballot.event.name }}</h1>
+  <p class="page-subtitle">Projects appear in a stable, voter-specific order.</p>
+</div>
+
+{% if ballot.voting_state == 'not_started' %}
+  <div class="banner banner-warning" role="status">Voting has not opened yet.</div>
+{% elif ballot.voting_state == 'closed' %}
+  <div class="banner banner-closed" role="status">Voting is closed.</div>
+{% elif not ballot.can_vote %}
+  <div class="banner banner-warning" role="status">Organizer accounts can review the ballot but cannot vote.</div>
+{% endif %}
+
+<section class="detail-section" aria-live="polite">
+  <p class="projects-count">{% include "voting/_vote_budget.html" with oob=False %}</p>
+  <div class="project-grid">
     {% for project in ballot.projects %}
-      <li>
-        <a href="/projects/{{ project.id }}">{{ project.title }}</a> — {{ project.track.name }}
-        {% if project.id in ballot.cast_project_ids %}
-          <span>Voted</span>
-          {% if ballot.voting_open %}
-            <form method="post" action="/vote/{{ ballot.event.slug }}/{{ project.id }}/withdraw">
-              {% csrf_token %}<button type="submit">Withdraw vote</button>
-            </form>
-          {% endif %}
-        {% elif ballot.voting_open %}
-          {% if ballot.remaining_budget is None or ballot.remaining_budget > 0 %}
-            <form method="post" action="/vote/{{ ballot.event.slug }}/{{ project.id }}">
-              {% csrf_token %}<button type="submit">Vote</button>
-            </form>
-          {% endif %}
-        {% endif %}
-      </li>
+      {% include "voting/_vote_card.html" with vote_message="" %}
     {% empty %}
-      <li>No eligible submissions are available.</li>
+      <p class="empty-state">No eligible submitted projects are available.</p>
     {% endfor %}
-  </ol>
-</main>
+  </div>
+</section>
 {% endblock %}

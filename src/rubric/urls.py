@@ -37,6 +37,8 @@ from events.views import landing_page_view
 from events.views_organizer import (
     organizer_events_view,
     organizer_event_dates_view,
+    organizer_open_voting_now_view,
+    organizer_close_voting_now_view,
     organizer_event_tracks_view,
     organizer_event_track_edit_view,
     organizer_event_prizes_view,
@@ -86,6 +88,8 @@ urlpatterns = [
     path('organizer/rubric', organizer_rubric_view, name='organizer_rubric'),
     path('organizer/events', organizer_events_view, name='organizer_events'),
     path('organizer/events/<int:event_id>/dates', organizer_event_dates_view, name='organizer_event_dates'),
+    path('organizer/events/<int:event_id>/voting/open-now', organizer_open_voting_now_view, name='organizer_voting_open_now'),
+    path('organizer/events/<int:event_id>/voting/close-now', organizer_close_voting_now_view, name='organizer_voting_close_now'),
     path('organizer/events/<int:event_id>/tracks', organizer_event_tracks_view, name='organizer_event_tracks'),
     path('organizer/events/<int:event_id>/tracks/<int:track_id>', organizer_event_track_edit_view, name='organizer_event_track_edit'),
     path('organizer/events/<int:event_id>/prizes', organizer_event_prizes_view, name='organizer_event_prizes'),

@@ -38,6 +38,22 @@
     </div>
   </div>
 
+  <section class="detail-section" id="voting-integrity-card" style="margin-bottom: var(--space-lg);">
+    <div class="card-top">
+      <div>
+        <h2 class="card-title">Voting integrity</h2>
+        <p class="form-help">Live counts of voting and comment actions.</p>
+      </div>
+      <a class="btn btn-secondary" href="{% url 'organizer_audit_log_page' %}">Audit log</a>
+    </div>
+    <div id="voting-integrity-summary"
+         hx-get="{% url 'organizer_voting_summary' %}"
+         hx-trigger="every 10s"
+         hx-swap="innerHTML">
+      {% include "organizer/_voting_integrity.html" with summary=voting_summary %}
+    </div>
+  </section>
+
   <!-- Polling Container (UX.md §3 live data refresh) -->
   <div id="dashboard-content" hx-get="/organizer" hx-trigger="every 10s" hx-select="#dashboard-content" hx-target="#dashboard-content" hx-swap="outerHTML">
     

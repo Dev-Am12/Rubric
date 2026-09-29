@@ -68,10 +68,10 @@
             <small>{{ comment.author.display_name|default:"Open-link voter" }} · {{ comment.created_at|date:"M d, Y H:i" }}</small>
             {% if is_org %}
               {% if comment.is_flagged %}<strong>Hidden from public</strong>{% endif %}
-              <form method="post" action="/api/v1/organizer/comments/{{ comment.id }}/flag">
+              <form method="post" action="{% url 'organizer_comment_flag' comment.id %}">
                 {% csrf_token %}
                 <input type="hidden" name="flagged" value="{% if comment.is_flagged %}false{% else %}true{% endif %}">
-                <button type="submit">{% if comment.is_flagged %}Unhide{% else %}Flag and hide{% endif %}</button>
+                <button class="btn btn-secondary" type="submit">{% if comment.is_flagged %}Unflag{% else %}Flag and hide{% endif %}</button>
               </form>
             {% endif %}
           </article>
@@ -79,12 +79,19 @@
           <p>No comments yet.</p>
         {% endfor %}
         {% if can_comment %}
-          <form method="post" action="/projects/{{ project.id }}/comments">
+          <form method="post" action="{% url 'project_comment_create' project.id %}" class="form-card">
             {% csrf_token %}
-            <label for="comment-body">Add a comment</label>
-            <textarea id="comment-body" name="body" maxlength="2000" required></textarea>
-            <button type="submit">Post comment</button>
+            <div class="form-group">
+              <label class="form-label" for="comment-body">Add a comment</label>
+              <textarea class="form-textarea" id="comment-body" name="body" maxlength="2000" required></textarea>
+              <span class="form-help">Comments are shown publicly unless an organizer flags them.</span>
+            </div>
+            <button class="btn btn-primary" type="submit">Post comment</button>
           </form>
+        {% elif comment_auth_required %}
+          <p><a href="{{ comment_login_url }}">Sign in to comment during this event's voting window.</a></p>
+        {% elif comment_status %}
+          <p class="form-help">{{ comment_status }}</p>
         {% endif %}
       </section>
     {% endif %}

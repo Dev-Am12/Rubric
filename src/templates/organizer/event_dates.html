@@ -88,5 +88,18 @@
       </div>
     </form>
   </div>
+
+  <section class="detail-section" style="margin-top: var(--space-lg);">
+    <h2>Voting window actions</h2>
+    <p class="form-help">These actions update the voting window only; the submissions deadline is unchanged.</p>
+    <div class="form-actions">
+      <form method="post" action="{% url 'organizer_voting_open_now' event.id %}">
+        {% csrf_token %}<button class="btn btn-primary" type="submit">Open voting now</button>
+      </form>
+      <form method="post" action="{% url 'organizer_voting_close_now' event.id %}">
+        {% csrf_token %}<button class="btn btn-secondary" type="submit">Close voting now</button>
+      </form>
+    </div>
+  </section>
 </div>
 {% endblock %}

@@ -411,9 +411,9 @@ voting_results:
   method: GET
   auth: organizer_any_time; public_after_close
   personas:
-    anonymous: 401 while open or when close is null; 200 after close
-    participant: 403 while open; 200 after close
-    judge: 403 while open; 200 after close
+    anonymous: 200 hidden HTML while open or when close is null; 200 after close (JSON is 401 while hidden)
+    participant: 200 hidden HTML while open; 200 after close (JSON is 403 while hidden)
+    judge: 200 hidden HTML while open; 200 after close (JSON is 403 while hidden)
     organizer: 200
   note: Each response calls services.voting.get_results; no cache or alternate tally path.
 
@@ -453,4 +453,26 @@ organizer_voting_summary:
     organizer: 200
   note: One response includes counts per attempt outcome and per project for V-06 verification.
 
+organizer_voting_open_now:
+  declared: true
+  path: /organizer/events/{event_id}/voting/open-now
+  method: POST
+  auth: organizer_for_target_event
+  personas:
+    anonymous: 401
+    participant: 403
+    judge: 403
+    organizer: 302 after opening and audit
+  note: Sets voting_opens_at to now and preserves the configured voting close time and submissions deadline.
 
+organizer_voting_close_now:
+  declared: true
+  path: /organizer/events/{event_id}/voting/close-now
+  method: POST
+  auth: organizer_for_target_event
+  personas:
+    anonymous: 401
+    participant: 403
+    judge: 403
+    organizer: 302 after closing and audit
+  note: Sets voting_closes_at to now and preserves voting open time and submissions deadline.

@@ -351,7 +351,16 @@ class G5Step3UserAccountsTests(TestCase):
             'password': 'different_wrong_password',
         })
         def normalize_csrf(raw_html):
-            return re.sub(rb'name="csrfmiddlewaretoken" value="[^"]+"', rb'name="csrfmiddlewaretoken" value="CSRF_MASKED"', raw_html)
+            normalized = re.sub(
+                rb'name="csrfmiddlewaretoken" value="[^"]+"',
+                rb'name="csrfmiddlewaretoken" value="CSRF_MASKED"',
+                raw_html,
+            )
+            return re.sub(
+                rb'"X-CSRFToken": "[^"]+"',
+                b'"X-CSRFToken": "CSRF_MASKED"',
+                normalized,
+            )
 
         self.assertEqual(normalize_csrf(res_wrong_pw.content), normalize_csrf(res_same_email.content))
 

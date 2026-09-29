@@ -2,11 +2,14 @@
 
 import json
 
-from django.http import Http404, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils.http import urlencode
 from django.views.decorators.http import require_GET, require_POST
 
+from accounts.actors import PermissionDenied
 from voting import models
 from services import voting as voting_services
 
@@ -50,6 +53,40 @@ def _attempt_response(request, attempt, *, redirect_to=None):
     return JsonResponse({'outcome': outcome, 'attempt_id': attempt.pk}, status=status)
 
 
+def _is_htmx(request):
+    return request.headers.get('HX-Request', '').lower() == 'true'
+
+
+def _attempt_message(attempt):
+    return {
+        models.VoteAttemptOutcome.REJECTED_DUPLICATE: 'You have already voted for this project.',
+        models.VoteAttemptOutcome.REJECTED_RATE_LIMIT: 'Too many voting actions. Please wait a minute and try again.',
+        models.VoteAttemptOutcome.REJECTED_BUDGET: 'Your vote budget is used. Withdraw another vote to free a slot.',
+        models.VoteAttemptOutcome.REJECTED_CLOSED: 'Voting is not open right now.',
+        models.VoteAttemptOutcome.WITHDRAWN: 'Vote withdrawn. Your budget slot is available again.',
+        models.VoteAttemptOutcome.ACCEPTED: 'Vote recorded.',
+    }.get(attempt.outcome, 'Voting action was not accepted.')
+
+
+def _render_vote_update(request, event_slug, project_id, attempt):
+    ballot = voting_services.get_ballot(
+        request.actor, event_slug, **_request_identity(request),
+    )
+    project = next((item for item in ballot['projects'] if item.pk == project_id), None)
+    if project is None:
+        raise Http404('Project not found.')
+    html = render_to_string('voting/_vote_card.html', {
+        'ballot': ballot,
+        'project': project,
+        'vote_message': _attempt_message(attempt),
+    }, request=request)
+    html += render_to_string('voting/_vote_budget.html', {
+        'ballot': ballot,
+        'oob': True,
+    }, request=request)
+    return HttpResponse(html)
+
+
 def _ballot_json(ballot):
     return {
         'event': {'slug': ballot['event'].slug, 'name': ballot['event'].name},
@@ -80,6 +117,12 @@ def ballot_view(request, event_slug):
         )
     except ValueError as exc:
         raise Http404(str(exc))
+    except PermissionDenied:
+        if request.actor.is_anonymous and not _json_requested(request):
+            next_url = request.get_full_path()
+            query = urlencode({'next': next_url, 'voting_required': '1'})
+            return redirect(f"{reverse('login')}?{query}")
+        raise
     if _json_requested(request):
         return JsonResponse(_ballot_json(ballot))
     return render(request, 'voting/ballot.html', {'ballot': ballot})
@@ -96,6 +139,8 @@ def cast_view(request, event_slug, project_id):
         )
     except ValueError as exc:
         raise Http404(str(exc))
+    if _is_htmx(request):
+        return _render_vote_update(request, event_slug, project_id, attempt)
     return _attempt_response(
         request, attempt,
         redirect_to=reverse('voting_ballot', args=[event_slug]),
@@ -110,6 +155,8 @@ def withdraw_view(request, event_slug, project_id):
         )
     except ValueError as exc:
         return JsonResponse({'error': 'not_found', 'detail': str(exc)}, status=404)
+    if _is_htmx(request):
+        return _render_vote_update(request, event_slug, project_id, attempt)
     return _attempt_response(
         request, attempt,
         redirect_to=reverse('voting_ballot', args=[event_slug]),
@@ -133,7 +180,12 @@ def _results_json(result):
 
 @require_GET
 def results_view(request, event_slug):
-    result = voting_services.get_results(request.actor, event_slug)
+    try:
+        result = voting_services.get_results(request.actor, event_slug)
+    except PermissionDenied:
+        if _json_requested(request):
+            raise
+        return render(request, 'voting/results_hidden.html', status=200)
     if _json_requested(request):
         return JsonResponse(_results_json(result))
     return render(request, 'voting/results.html', {'result': result})
@@ -171,12 +223,16 @@ def organizer_comment_flag_view(request, comment_id):
         )
     except ValueError as exc:
         return JsonResponse({'error': 'not_found', 'detail': str(exc)}, status=404)
+    if not _is_htmx(request):
+        return redirect(reverse('project_detail', args=[comment.project_id]))
     return JsonResponse({'id': comment.pk, 'is_flagged': comment.is_flagged})
 
 
 @require_GET
 def organizer_voting_summary_view(request):
     summary = voting_services.integrity_summary(request.actor, request.actor.event)
+    if _is_htmx(request):
+        return render(request, 'organizer/_voting_integrity.html', {'summary': summary})
     return JsonResponse({
         'event': summary['event'].slug,
         'total_attempts': summary['total_attempts'],

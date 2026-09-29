@@ -379,5 +379,14 @@ un.py T1/T2 check. Temporary database and server log files were removed afterwar
 
 - Finding: created-not-started containers have no NetworkID.
 
+## 2026-09-29 — Phase 2.2: T3 voting UI and review follow-ups
+
+- Comment service now rejects draft and duplicate projects; voting access mode becomes immutable after any vote or attempt, with the event row locked to serialize setting changes against voting actions.
+- Organizer open-now and close-now actions update only the relevant voting timestamp and append before/after audit entries. `submissions_close_at` remains unchanged.
+- Added server-rendered ballot cards with HTMX Vote/Withdraw, budget display, and inline duplicate/rate-limit/budget outcomes; public results stay hidden until close; project comments honor voting mode and show organizer moderation controls; organizer dashboard polls integrity outcomes and blocked project counts every 10 seconds. Settings include voting mode, budget, window, and immediate open/close actions.
+- Anonymous browser voting uses the existing CSRF split: ballot response supplies the HTMX `X-CSRFToken` header, while a bare anonymous POST without a token receives 403 before the service. Existing login comparison test now normalizes the additional masked token in the HTMX header too.
+- Verification: focused voting tests `Ran 30 tests in 2.822s`, `OK`; full SQLite suite `Ran 236 tests in 145.051s`, `OK (skipped=1)`; full PostgreSQL suite `Ran 236 tests in 304.954s`, `OK`.
+- Live `run.py .dogfood.toml` against local `runserver 8080` and PostgreSQL: all T1/T2 checks PASS, including gallery/project/submission gates, own judge scores, peer-score denial, participant denial, and CSV export. `claimed` remains empty.
+
 
 

@@ -206,6 +206,15 @@ def update_event(
     from services import audit
 
     with transaction.atomic():
+        # Serialize voting mode changes against casts, which also lock Event first.
+        event = Event.objects.select_for_update().get(pk=event.pk)
+        before['voting_access'] = event.voting_access
+        before['votes_per_voter'] = event.votes_per_voter
+        if voting_access is not Ellipsis and new_voting_access != event.voting_access:
+            from voting.models import Vote, VoteAttempt
+            if Vote.objects.filter(event=event).exists() or VoteAttempt.objects.filter(event=event).exists():
+                raise ValueError('voting_access cannot change after voting activity has been recorded.')
+
         if name is not None:
             event.name = name
         if slug is not None:

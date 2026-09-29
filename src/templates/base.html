@@ -8,7 +8,7 @@
   <script src="/static/js/htmx.min.js"></script>
   {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
   <header class="site-header">
     <nav class="site-nav" aria-label="Main Navigation">
       <a href="/" class="brand">
@@ -23,6 +23,10 @@
       <ul class="nav-links">
         <li><a href="/" id="nav-home">Home</a></li>
         <li><a href="/projects" id="nav-gallery">Gallery</a></li>
+        {% if request.actor and request.actor.event %}
+          <li><a href="{% url 'voting_ballot' request.actor.event.slug %}" id="nav-vote">Vote</a></li>
+          <li><a href="{% url 'voting_results' request.actor.event.slug %}" id="nav-voting-results">Results</a></li>
+        {% endif %}
         <li><a href="/my/submissions" id="nav-my-submissions">My Submissions</a></li>
         {% if request.actor and request.actor.is_judge %}
           <li><a href="/judge/queue" id="nav-judge-queue">Judge Queue</a></li>
@@ -30,6 +34,7 @@
         {% if request.actor and request.actor.is_organizer %}
           <li><a href="/organizer" id="nav-organizer-dashboard">Dashboard</a></li>
           <li><a href="/organizer/events" id="nav-organizer-events">Events</a></li>
+          {% if request.actor.event %}<li><a href="{% url 'organizer_event_dates' request.actor.event.id %}" id="nav-organizer-event-settings">Event Settings</a></li>{% endif %}
           <li><a href="/organizer/judges" id="nav-organizer-judges">Judges</a></li>
           <li><a href="/organizer/progress" id="nav-organizer-progress">Progress</a></li>
           <li><a href="/organizer/rubric" id="nav-organizer-rubric">Rubric</a></li>

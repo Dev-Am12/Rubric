@@ -1,0 +1,33 @@
+<article class="project-card" id="vote-card-{{ project.id }}">
+  <div class="card-top">
+    <h2 class="card-title"><a href="{% url 'project_detail' project.id %}">{{ project.title }}</a></h2>
+    <span class="badge badge-track">{{ project.track.name }}</span>
+  </div>
+  <p class="card-summary">{{ project.summary }}</p>
+  {% if vote_message %}<p class="banner banner-warning" role="status">{{ vote_message }}</p>{% endif %}
+  <div class="card-footer">
+    {% if project.id in ballot.cast_project_ids %}
+      <span>Vote recorded</span>
+      {% if ballot.voting_open and ballot.can_vote %}
+        <form method="post" action="{% url 'voting_withdraw' ballot.event.slug project.id %}"
+              hx-post="{% url 'voting_withdraw' ballot.event.slug project.id %}"
+              hx-target="#vote-card-{{ project.id }}" hx-swap="outerHTML">
+          {% csrf_token %}<button class="btn btn-secondary" type="submit">Withdraw</button>
+        </form>
+      {% endif %}
+    {% elif ballot.voting_open and ballot.can_vote %}
+      {% if ballot.remaining_budget is None or ballot.remaining_budget > 0 %}
+        <span>Not voted</span>
+        <form method="post" action="{% url 'voting_cast' ballot.event.slug project.id %}"
+              hx-post="{% url 'voting_cast' ballot.event.slug project.id %}"
+              hx-target="#vote-card-{{ project.id }}" hx-swap="outerHTML">
+          {% csrf_token %}<button class="btn btn-primary" type="submit">Vote</button>
+        </form>
+      {% else %}
+        <span>Vote budget used</span>
+      {% endif %}
+    {% else %}
+      <span>Voting unavailable</span>
+    {% endif %}
+  </div>
+</article>
