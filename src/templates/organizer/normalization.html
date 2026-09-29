@@ -76,6 +76,88 @@
     </div>
   </div>
 
+  <!-- Normalization Evidence & Empirical Validation Card -->
+  <div class="card" style="background: var(--bg-surface, #ffffff); border: 1px solid var(--border-subtle, #e2e8f0); border-radius: var(--radius-lg, 8px); padding: var(--space-lg); margin-bottom: var(--space-xl); box-shadow: 0 1px 3px rgba(0,0,0,0.05);" id="norm-evidence-card">
+    <div style="margin-bottom: var(--space-md);">
+      <h2 style="font-size: 1.125rem; font-weight: 600; margin: 0 0 var(--space-2xs) 0;">Normalization Evidence & Empirical Validation</h2>
+      <p style="color: var(--text-secondary, #64748b); font-size: 0.875rem; margin: 0;">
+        Empirical measurements proving shrinkage pulls dispersed judge calibration toward consensus and recovers ground-truth ranking.
+      </p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--space-lg);" class="evidence-grid">
+      
+      <!-- REAL FIXTURE EVIDENCE (Real First) -->
+      <div style="padding: var(--space-md); background: var(--bg-subtle, #f8fafc); border-radius: 6px; border: 1px solid var(--border-subtle, #e2e8f0);" id="real-fixture-evidence">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-xs); flex-wrap: wrap; gap: 4px;">
+          <span style="font-size: 0.8125rem; font-weight: 700; text-transform: uppercase; color: var(--accent, #0284c7);">
+            Real Fixture Evidence (evt_01)
+          </span>
+          <span class="badge" style="background: #e0f2fe; color: #0369a1; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; font-weight: 600;">
+            {{ calibration_evidence.ballot_count }} ballots &middot; {{ calibration_evidence.judge_count }} judges
+          </span>
+        </div>
+        <div style="font-size: 0.8125rem; color: var(--text-secondary, #64748b); margin-bottom: var(--space-sm);">
+          Inter-judge rating spread across judges before and after empirical-Bayes shrinkage (excluding duplicate prj_07):
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+          <div style="background: #fff; padding: var(--space-xs) var(--space-sm); border-radius: 4px; border: 1px solid var(--border-subtle, #e2e8f0);">
+            <div style="font-size: 0.75rem; color: var(--text-muted, #94a3b8);">Raw Judge Means Stdev</div>
+            <div style="font-size: 1.125rem; font-weight: 700; color: var(--text-primary, #0f172a); font-family: monospace;" id="raw-judge-stdev">
+              {{ calibration_evidence.raw_mean_stdev|floatformat:4 }}
+            </div>
+            <div style="font-size: 0.6875rem; color: var(--text-muted, #94a3b8);">Sample: {{ calibration_evidence.raw_mean_sample_stdev|floatformat:4 }}</div>
+          </div>
+          <div style="background: #fff; padding: var(--space-xs) var(--space-sm); border-radius: 4px; border: 1px solid var(--border-subtle, #e2e8f0);">
+            <div style="font-size: 0.75rem; color: var(--text-muted, #94a3b8);">Norm Ballot Means Stdev</div>
+            <div style="font-size: 1.125rem; font-weight: 700; color: #16a34a; font-family: monospace;" id="norm-ballot-stdev">
+              {{ calibration_evidence.norm_mean_stdev|floatformat:4 }}
+            </div>
+            <div style="font-size: 0.6875rem; color: var(--text-muted, #94a3b8);">Sample: {{ calibration_evidence.norm_mean_sample_stdev|floatformat:4 }}</div>
+          </div>
+        </div>
+        <div style="font-size: 0.8125rem; color: var(--text-primary, #0f172a); background: #f0fdf4; border: 1px solid #bbf7d0; padding: var(--space-xs) var(--space-sm); border-radius: 4px;">
+          <strong>Variance Reduction:</strong> Spread shrunk by <strong>{{ calibration_evidence.stdev_reduction|floatformat:4 }}</strong> ({{ calibration_evidence.reduction_pct|floatformat:1 }}% dispersion reduction toward event consensus).
+        </div>
+      </div>
+
+      <!-- SYNTHETIC VALIDATION (Synthetic clearly labelled) -->
+      <div style="padding: var(--space-md); background: var(--bg-subtle, #f8fafc); border-radius: 6px; border: 1px solid var(--border-subtle, #e2e8f0);" id="synthetic-validation-evidence">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-xs); flex-wrap: wrap; gap: 4px;">
+          <span style="font-size: 0.8125rem; font-weight: 700; text-transform: uppercase; color: #b45309;">
+            Synthetic Ground-Truth Validation (SYNTHETIC)
+          </span>
+          <span class="badge" style="background: #fef3c7; color: #92400e; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; font-weight: 600;">
+            SYNTHETIC &middot; Seed {{ synthetic_evidence.seed }}
+          </span>
+        </div>
+        <div style="font-size: 0.8125rem; color: var(--text-secondary, #64748b); margin-bottom: var(--space-sm);">
+          20 projects with planted true quality &middot; 10 judges with systematic bias [-1.5, +1.5] &middot; Spearman correlation with ground truth:
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+          <div style="background: #fff; padding: var(--space-xs) var(--space-sm); border-radius: 4px; border: 1px solid var(--border-subtle, #e2e8f0);">
+            <div style="font-size: 0.75rem; color: var(--text-muted, #94a3b8);">Raw Ranking vs Truth</div>
+            <div style="font-size: 1.125rem; font-weight: 700; color: var(--text-primary, #0f172a); font-family: monospace;" id="synthetic-raw-spearman">
+              {{ synthetic_evidence.raw_spearman|floatformat:4 }}
+            </div>
+            <div style="font-size: 0.6875rem; color: var(--text-muted, #94a3b8);">Spearman &rho;</div>
+          </div>
+          <div style="background: #fff; padding: var(--space-xs) var(--space-sm); border-radius: 4px; border: 1px solid var(--border-subtle, #e2e8f0);">
+            <div style="font-size: 0.75rem; color: var(--text-muted, #94a3b8);">Norm Ranking vs Truth</div>
+            <div style="font-size: 1.125rem; font-weight: 700; color: #16a34a; font-family: monospace;" id="synthetic-norm-spearman">
+              {{ synthetic_evidence.normalized_spearman|floatformat:4 }}
+            </div>
+            <div style="font-size: 0.6875rem; color: var(--text-muted, #94a3b8);">Spearman &rho;</div>
+          </div>
+        </div>
+        <div style="font-size: 0.8125rem; color: var(--text-primary, #0f172a); background: #fefce8; border: 1px solid #fef08a; padding: var(--space-xs) var(--space-sm); border-radius: 4px;">
+          <strong>Ranking Fidelity:</strong> Normalized ranking correlation improves by <strong>+{{ synthetic_evidence.improvement|floatformat:4 }}</strong> over raw averages.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Normalization Proof Table Card -->
   <div class="card" style="background: var(--bg-surface, #ffffff); border: 1px solid var(--border-subtle, #e2e8f0); border-radius: var(--radius-lg, 8px); padding: var(--space-lg); box-shadow: 0 1px 3px rgba(0,0,0,0.05); overflow-x: auto;" id="proof-table-card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">

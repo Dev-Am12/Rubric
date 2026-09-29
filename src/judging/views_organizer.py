@@ -292,6 +292,9 @@ def organizer_normalization_view(request):
         key=lambda item: (0, item['normalized_rank']) if item['normalized_rank'] is not None else (1, item['project_key'])
     )
 
+    calibration_evidence = norm_services.compute_judge_calibration_evidence(latest_run)
+    synthetic_evidence = norm_services.synthetic_validation(seed=2026)
+
     context = {
         'latest_run': latest_run,
         'params': params,
@@ -299,6 +302,8 @@ def organizer_normalization_view(request):
         'total_scores': len(table_rows),
         'ranked_scores': sum(1 for r in table_rows if r['normalized_rank'] is not None),
         'excluded_scores': sum(1 for r in table_rows if r['normalized_rank'] is None),
+        'calibration_evidence': calibration_evidence,
+        'synthetic_evidence': synthetic_evidence,
     }
     return render(request, 'organizer/normalization.html', context)
 

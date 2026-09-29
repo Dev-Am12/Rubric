@@ -385,8 +385,51 @@ un.py T1/T2 check. Temporary database and server log files were removed afterwar
 - Organizer open-now and close-now actions update only the relevant voting timestamp and append before/after audit entries. `submissions_close_at` remains unchanged.
 - Added server-rendered ballot cards with HTMX Vote/Withdraw, budget display, and inline duplicate/rate-limit/budget outcomes; public results stay hidden until close; project comments honor voting mode and show organizer moderation controls; organizer dashboard polls integrity outcomes and blocked project counts every 10 seconds. Settings include voting mode, budget, window, and immediate open/close actions.
 - Anonymous browser voting uses the existing CSRF split: ballot response supplies the HTMX `X-CSRFToken` header, while a bare anonymous POST without a token receives 403 before the service. Existing login comparison test now normalizes the additional masked token in the HTMX header too.
-- Verification: focused voting tests `Ran 30 tests in 2.822s`, `OK`; full SQLite suite `Ran 236 tests in 145.051s`, `OK (skipped=1)`; full PostgreSQL suite `Ran 236 tests in 304.954s`, `OK`.
-- Live `run.py .dogfood.toml` against local `runserver 8080` and PostgreSQL: all T1/T2 checks PASS, including gallery/project/submission gates, own judge scores, peer-score denial, participant denial, and CSV export. `claimed` remains empty.
+## 2026-09-29 — Phase 2, Step 2.3: Adversarial review of T3 voting and authorization
+
+- Conducted exhaustive adversarial audit across all 10 target threat vectors; verified findings via targeted probe script on SQLite and PostgreSQL.
+- Findings summary:
+  1. Results leakage: Public results are strictly hidden from anonymous/participant/judge personas prior to voting close (HTTP 200 with generic hidden template, 401/403 on JSON). Organizers can view live tallies before close via `/results/<slug>` and `/api/v1/organizer/voting/summary` (`active_votes`), as well as reconstruct tallies from the immutable audit log export (`voting.vote_cast` / `voting.vote_withdrawn`). (P2)
+  2. Vote budget & race conditions: PostgreSQL serializes casts and withdrawals by locking the single `Event` row (`SELECT FOR UPDATE`), preventing budget bypass at the expense of an event-wide concurrency bottleneck. On SQLite, in-memory `_sqlite_locks` mutex is ineffective across multi-process workers, permitting budget race condition bypass under multi-process deployment. (P1)
+  3. OPEN-mode fingerprint spoofing: Fingerprint is HMAC of `REMOTE_ADDR` and `HTTP_USER_AGENT`. An attacker from a single IP can cast unlimited votes by rotating the `User-Agent` header (bypassing per-fingerprint rate and budget limits). Conversely, users sharing NAT IP and browser headers collide on the same fingerprint, blocking votes or enabling mutual vote withdrawal. (P1)
+  4. Ineligible project voting: Cast and comment services strictly enforce `status=SUBMITTED`, `is_duplicate_of__isnull=True`, and `event=event`. Attempts to vote/comment on `prj_07` (duplicate), draft projects, or cross-event submissions raise `PermissionDenied`. (P2 - secure)
+  5. Stored XSS in submission links: Project `repo_url`, `demo_video_url`, and `live_url` are stored without URL scheme validation and rendered in `href="{{ ... }}"` in `project_detail.html` and `ballot.html`. Attackers can inject `javascript:...` URIs, leading to Stored XSS when judges or organizers click project links. Comments and titles are properly escaped. (P0/P1)
+  6. Route declaration coverage: Introspected URL resolver; all 48 route patterns are registered in `tests/authz_expectations.yaml`. Zero undeclared routes exist. (P2 - secure)
+  7. IDOR / peer score isolation: Single-function score isolation (`get_scores`), assignment judge scoping (`JudgeAssignment.objects.get(judge=actor.user)`), and team membership checks prevent peer score or ballot hijacking. (P2 - secure)
+  8. Event-management cross-tenant check: `update_event`, `create_track`, `update_track`, `create_prize`, `update_prize`, and `set_current_event` check `actor.is_organizer` (scoped to `current_event()`) rather than checking membership in the target event being modified. An organizer of the current event can modify any other event, while organizers of non-current events cannot edit their own event. (P1)
+  9. Secret ballot loss in AUTH mode: In AUTH mode, `voter_fingerprint` is stored as plaintext `str(user.pk)` in `Vote` and `VoteAttempt`. Furthermore, `audit.record` records `actor_user_id = actor.user.pk` on `voting.vote_cast` alongside `payload.project_id`, irrevocably binding voter identity to vote choice in the permanent cryptographic ledger. (P1)
+  10. Setting mutations after votes exist: `voting_access` mode changes after votes exist are rejected with `ValueError`. However, `voting_closes_at` and `votes_per_voter` can be modified after votes exist, potentially granting early voters asymmetrical extra votes. Additionally, `open_voting_now` does not clear past `voting_closes_at`, leaving voting closed. (P2)
+
+## 2026-09-29 — Phase 3, Step 3.1: Make JUDGING.md true and surface normalization evidence
+
+- Fixed all incorrect statistical parameters in `JUDGING.md`:
+  - Recomputed event parameters from a real run on fixture `evt_01` (121 active ballots across 29 judges, excluding duplicate `prj_07`'s 5 ballots):
+    - Pooled mean $\mu_0 = 3.5758$ (corrected from 3.6190).
+    - Pooled variance $\sigma_0^2 = 0.3930$ (corrected from 0.6019).
+    - Pooled standard deviation $\sigma_0 \approx 0.6269$ (corrected from 0.7759).
+    - Constant judge `jdg_07` shrinkage variance $\tilde{s}_j^2 = \frac{0 + 4(0.3930)}{3 + 4} = 0.2246$ (corrected from 0.3440).
+    - Constant judge `jdg_07` z-score contribution confirmed at $0.5115$.
+  - Corrected multi-track judge citations: `jdg_02`, `jdg_03`, `jdg_11`, and `jdg_29` (previously cited `jdg_01`, `jdg_04`, and `jdg_07` were verified to each have only 1 track in fixtures).
+  - Audited all other numbers in `JUDGING.md`: verified project ranks and scores (`prj_41` raw 3.8333 / norm 3.7912 / rank 8; `prj_07` duplicate / rank None; `prj_09` norm 3.6128 / rank 16; `prj_17` norm 3.5741 / rank 19; `prj_19` norm 3.6022 / rank 18; `prj_13` norm 3.3116 / rank 31; `prj_26` norm 3.2631 / rank 32; thin projects list of 8 projects; 40 of 41 projects ranked).
+- Normalization evidence and synthetic validation:
+  - Added `services.normalization.synthetic_validation(seed=2026)`: fixed-seed planted-truth setup (20 projects, 10 biased judges $\in [-1.5, +1.5]$, Gaussian noise, 3 reviews/project) returning `SyntheticValidationResult` supporting attribute, dict, and tuple unpacking access. Produces raw-mean ranking Spearman correlation 0.7308 vs normalized ranking Spearman correlation 0.8917 (gain of +0.1609).
+  - Added `services.normalization.compute_judge_calibration_evidence(run_record)`: computes inter-judge spread across judges before and after empirical-Bayes shrinkage on real fixture data: raw judge means stdev 0.3235 (sample stdev 0.3292) vs mean normalized ballot values stdev 0.2023 (sample stdev 0.2059), demonstrating a 0.1212 (37.5%) reduction in cross-judge rating scale dispersion toward event consensus.
+  - Surfaced both evidence sections on `/organizer/normalization` (real fixture evidence first, synthetic clearly labeled SYNTHETIC) and quoted both in `JUDGING.md` with method notes.
+- Ballot anchors graceful degradation:
+  - Updated `src/judging/views.py` (`judge_ballot_view`) to fall back to an empty dictionary and empty string for unmapped criterion names, ensuring organizer-added or renamed criteria degrade gracefully with no anchor text and no crash while standard criteria retain their anchor text.
+- Consistency and regression test suite:
+  - Added `tests/test_docs_consistency.py` testing:
+    - Recomputation of fixture normalization parameters and assertion that formatted strings appear in `JUDGING.md`.
+    - Verification that every numbered `## N.` heading in `DECISIONS.md` has a corresponding Table of Contents entry.
+    - Graceful degradation of ballot anchors for custom or renamed criteria.
+    - Reproducibility and interface compliance of `services.normalization.synthetic_validation`.
+    - Computation and UI rendering of real and synthetic evidence on `/organizer/normalization`.
+- Full suite verification:
+  - SQLite: Ran 241 tests in 42.949s, OK (skipped=1).
+  - PostgreSQL: Ran 241 tests in 168.664s, OK.
+  - Acceptance runner (`python run.py .dogfood.toml` against live server): all checks PASS (T1 gallery public, fixture projects shown, closed submissions refused; T2 judge sees own scores, peer scores denied, participant blocked, CSV export works). Verified T1 and T2.
+
+
 
 
 

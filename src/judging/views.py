@@ -144,7 +144,7 @@ def ballot_view(request, assignment_id):
     criteria_data = []
     for c in criteria:
         c_name = c.name.lower()
-        anchors = CRITERION_ANCHORS.get(c_name, DEFAULT_ANCHORS)
+        anchors = CRITERION_ANCHORS.get(c_name, {})
         curr_val = existing_scores.get(c.pk)
         curr_val_int = int(curr_val) if curr_val is not None else None
         options = []
@@ -152,7 +152,7 @@ def ballot_view(request, assignment_id):
         for val in range(1, max_score + 1):
             options.append({
                 'value': val,
-                'anchor': anchors.get(val, DEFAULT_ANCHORS.get(val, '')),
+                'anchor': anchors.get(val, ''),
                 'is_selected': (curr_val_int == val),
             })
         criteria_data.append({

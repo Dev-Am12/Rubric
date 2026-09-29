@@ -5,6 +5,7 @@ import io
 import itertools
 import json
 import math
+import random
 from collections import Counter, defaultdict, deque
 from decimal import Decimal
 
@@ -544,3 +545,194 @@ def build_proof_artifact(run_record):
             json.dumps(flags.get(project_key, []), sort_keys=True, separators=(',', ':'), allow_nan=False),
         ])
     return output.getvalue().encode('utf-8')
+
+
+class SyntheticValidationResult:
+    """Container for synthetic validation metrics supporting dict, attribute, and tuple access."""
+
+    def __init__(self, raw_spearman, normalized_spearman, seed=None):
+        self.raw_spearman = float(raw_spearman)
+        self.normalized_spearman = float(normalized_spearman)
+        self.raw_correlation = self.raw_spearman
+        self.normalized_correlation = self.normalized_spearman
+        self.seed = seed
+        self.improvement = self.normalized_spearman - self.raw_spearman
+
+    def __iter__(self):
+        return iter((self.raw_spearman, self.normalized_spearman))
+
+    def __getitem__(self, item):
+        if item in ('raw_spearman', 'raw_correlation', 0):
+            return self.raw_spearman
+        if item in ('normalized_spearman', 'normalized_correlation', 1):
+            return self.normalized_spearman
+        if item == 'seed':
+            return self.seed
+        if item == 'improvement':
+            return self.improvement
+        raise KeyError(item)
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def __repr__(self):
+        return f"SyntheticValidationResult(raw_spearman={self.raw_spearman:.4f}, normalized_spearman={self.normalized_spearman:.4f}, seed={self.seed})"
+
+
+def synthetic_validation(seed=2026):
+    """Run fixed-seed synthetic ground-truth validation.
+
+    Generates synthetic projects with planted true quality and synthetic judges
+    with systematic calibration offsets, returning Spearman correlations
+    for raw-mean ranking vs normalized ranking against true quality.
+    """
+    rng = random.Random(seed)
+    true_quality = {f'syn_prj_{index:02d}': rng.uniform(1.5, 4.5) for index in range(20)}
+    offsets = {f'syn_jdg_{index:02d}': -1.5 + index / 3 for index in range(10)}
+
+    observations = []
+    raw_by_project = {}
+    by_judge = {jid: [] for jid in offsets}
+    by_project = {pid: [] for pid in true_quality}
+
+    for index, pid in enumerate(sorted(true_quality)):
+        scores = []
+        for judge_index in (index % 10, (index + 1) % 10, (index + 2) % 10):
+            judge_id = f'syn_jdg_{judge_index:02d}'
+            observed = max(1.0, min(5.0, true_quality[pid] + offsets[judge_id] + rng.gauss(0, 0.2)))
+            observed = round(observed, 4)
+            scores.append(observed)
+            by_judge[judge_id].append(observed)
+            by_project[pid].append((judge_id, observed))
+            observations.append(observed)
+        raw_by_project[pid] = sum(scores) / len(scores)
+
+    mu0 = sum(observations) / len(observations)
+    var0 = sum((y - mu0) ** 2 for y in observations) / len(observations)
+    std0 = math.sqrt(var0)
+
+    judge_stats = {}
+    for jid, ys in by_judge.items():
+        nj = len(ys)
+        mean_j = sum(ys) / nj
+        var_j = sum((y - mean_j) ** 2 for y in ys) / nj
+        shrunk_mean = (nj * mean_j + KAPPA0 * mu0) / (nj + KAPPA0)
+        shrunk_var = (nj * var_j + NU0 * var0) / (nj + NU0)
+        judge_stats[jid] = (shrunk_mean, shrunk_var)
+
+    norm_by_project = {}
+    for pid, judge_scores in by_project.items():
+        z_scores = []
+        for jid, y in judge_scores:
+            sm, sv = judge_stats[jid]
+            z = (y - sm) / math.sqrt(sv)
+            z_scores.append(z)
+        norm_score = mu0 + (sum(z_scores) / len(z_scores)) * std0
+        norm_by_project[pid] = min(5.0, max(1.0, norm_score))
+
+    def descending_ranks(values):
+        ordered = sorted(values, key=lambda key: (-values[key], key))
+        return {key: rank for rank, key in enumerate(ordered, start=1)}
+
+    def spearman(left, right):
+        left_ranks = descending_ranks(left)
+        right_ranks = descending_ranks(right)
+        keys = sorted(left_ranks)
+        mean_left = sum(left_ranks[key] for key in keys) / len(keys)
+        mean_right = sum(right_ranks[key] for key in keys) / len(keys)
+        numerator = sum((left_ranks[key] - mean_left) * (right_ranks[key] - mean_right) for key in keys)
+        denominator = math.sqrt(
+            sum((left_ranks[key] - mean_left) ** 2 for key in keys)
+            * sum((right_ranks[key] - mean_right) ** 2 for key in keys)
+        )
+        return numerator / denominator if denominator > 0 else 0.0
+
+    raw_spearman = spearman(raw_by_project, true_quality)
+    norm_spearman = spearman(norm_by_project, true_quality)
+    return SyntheticValidationResult(raw_spearman, norm_spearman, seed=seed)
+
+
+def compute_judge_calibration_evidence(run_record):
+    """Compute empirical calibration evidence across judges on a real normalization run.
+
+    Calculates the standard deviation across judges of raw judge means vs
+    mean normalized ballot values (rescaled to the 1-5 scale).
+    """
+    params = run_record.parameters
+    mu0 = params.get('pooled_mean', 0.0)
+    var0 = params.get('pooled_variance', 0.0)
+    std0 = math.sqrt(var0) if var0 and var0 > 0 else 0.0
+
+    contributions = params.get('contributions', {})
+    judge_z_scores = defaultdict(list)
+    for project_key, judge_contribs in contributions.items():
+        for contrib in judge_contribs:
+            judge_id = contrib['judge_id']
+            judge_z_scores[judge_id].append(contrib['z_score'])
+
+    event = run_record.event
+    dup_project_ids = set(
+        Project.objects.filter(event=event, is_duplicate_of__isnull=False).values_list('pk', flat=True)
+    )
+    ballots = Ballot.objects.filter(
+        assignment__event=event, is_complete=True
+    ).exclude(assignment__project_id__in=dup_project_ids).select_related('assignment__judge').prefetch_related('scores__criterion')
+
+    judge_raw_scores = defaultdict(list)
+    for b in ballots:
+        val = _collapse_ballot(b)
+        if val is not None:
+            judge_raw_scores[b.assignment.judge_id].append(val)
+
+    judge_ids = sorted(judge_raw_scores.keys())
+    if not judge_ids:
+        return {
+            'judge_count': 0,
+            'ballot_count': 0,
+            'raw_mean_stdev': 0.0,
+            'raw_mean_sample_stdev': 0.0,
+            'norm_mean_stdev': 0.0,
+            'norm_mean_sample_stdev': 0.0,
+            'norm_z_stdev': 0.0,
+            'stdev_reduction': 0.0,
+            'reduction_pct': 0.0,
+        }
+
+    raw_judge_means = [sum(judge_raw_scores[jid]) / len(judge_raw_scores[jid]) for jid in judge_ids]
+    norm_judge_means = [
+        mu0 + (sum(judge_z_scores[jid]) / len(judge_z_scores[jid])) * std0
+        for jid in judge_ids if jid in judge_z_scores and judge_z_scores[jid]
+    ]
+
+    def stdev_pop(arr):
+        if not arr:
+            return 0.0
+        m = sum(arr) / len(arr)
+        return math.sqrt(sum((x - m) ** 2 for x in arr) / len(arr))
+
+    def stdev_sample(arr):
+        if len(arr) <= 1:
+            return 0.0
+        m = sum(arr) / len(arr)
+        return math.sqrt(sum((x - m) ** 2 for x in arr) / (len(arr) - 1))
+
+    raw_stdev = stdev_pop(raw_judge_means)
+    norm_stdev = stdev_pop(norm_judge_means)
+    reduction = raw_stdev - norm_stdev
+    reduction_pct = (reduction / raw_stdev * 100.0) if raw_stdev > 0 else 0.0
+
+    return {
+        'judge_count': len(judge_ids),
+        'ballot_count': sum(len(judge_raw_scores[jid]) for jid in judge_ids),
+        'raw_mean_stdev': raw_stdev,
+        'raw_mean_sample_stdev': stdev_sample(raw_judge_means),
+        'norm_mean_stdev': norm_stdev,
+        'norm_mean_sample_stdev': stdev_sample(norm_judge_means),
+        'norm_z_stdev': stdev_pop([sum(judge_z_scores[jid]) / len(judge_z_scores[jid]) for jid in judge_ids if jid in judge_z_scores and judge_z_scores[jid]]),
+        'stdev_reduction': reduction,
+        'reduction_pct': reduction_pct,
+    }
+
