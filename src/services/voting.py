@@ -159,7 +159,7 @@ def get_ballot(actor, event, *, ip=None, user_agent=None, fingerprint=None):
     own_project_ids = {vote.project_id for vote in own_votes}
     projects = list(eligible_projects(event))
 
-    # V-03: stable HMAC order for the same voter/event, independent of refresh or DB order.
+    # Stable HMAC order for the same voter/event, independent of refresh or DB order.
     key = (event.voting_seed + voter_fingerprint).encode('utf-8')
     projects.sort(key=lambda project: (
         hmac.new(key, str(project.pk).encode('ascii'), hashlib.sha256).digest(),

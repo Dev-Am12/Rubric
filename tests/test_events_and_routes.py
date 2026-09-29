@@ -1,8 +1,8 @@
 """
 Tests for G1 Step 2:
-  1. P-11 route name resolution via reverse() (API.md §1, .dogfood.toml)
+  1. P-11 route name resolution via reverse() (.dogfood.toml)
   2. Placeholder view responses (200 OK)
-  3. events.Prize model fields and relationships (SCHEMA.md §1.1)
+  3. events.Prize model fields and relationships
   4. events service layer: create_event, create_track, create_prize, get_event
      (organizer-only enforcement via require(), public read for get_event)
 """
@@ -27,7 +27,7 @@ import services.events  # Verify domain package import works too
 class P11RouteResolutionTest(TestCase):
     """
     Verify all five P-11 route names resolve to the exact paths declared in
-    API.md §1 and .dogfood.toml:
+    .dogfood.toml:
       - gallery      -> /projects
       - submit       -> /projects/new
       - judge_scores -> /api/judge/scores
@@ -73,7 +73,7 @@ class P11RouteResolutionTest(TestCase):
 
 class PrizeModelTest(TestCase):
     """
-    Verify events.Prize model per SCHEMA.md §1.1:
+    Verify events.Prize model:
       id, event (FK), rank_label, description.
     """
 

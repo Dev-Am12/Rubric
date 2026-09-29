@@ -5,13 +5,22 @@ Provides user registration, credential validation, token session management,
 and audit logging for account operations.
 """
 
+import hashlib
+import hmac
+from datetime import timedelta
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from accounts.models import AuthToken, EventMembership, EventRole, User
+from accounts.models import AuthAttempt, AuthToken, EventMembership, EventRole, User
 from events.models import Event
 from events.services import current_event
 from services import audit
+
+
+AUTH_RATE_LIMIT_ATTEMPTS = 10
+AUTH_RATE_LIMIT_WINDOW = timedelta(minutes=5)
+AUTH_RATE_LIMIT_MESSAGE = "Too many authentication attempts. Please try again in 5 minutes."
 
 
 GENERIC_LOGIN_ERROR = "Invalid email or password."
@@ -113,3 +122,40 @@ def logout(raw_token):
     token_hash = AuthToken.hash_token(raw_token)
     deleted_count, _ = AuthToken.objects.filter(token_hash=token_hash).delete()
     return deleted_count > 0
+
+
+def get_client_ip(request) -> str:
+    """Extract client IP from request. Uses REMOTE_ADDR directly."""
+    return request.META.get("REMOTE_ADDR", "") or ""
+
+
+def hash_ip(ip: str) -> str:
+    """Compute keyed HMAC-SHA256 hash of IP to prevent storing raw IPs."""
+    key = getattr(settings, "SECRET_KEY", "rubric-default-secret-key").encode("utf-8")
+    return hmac.new(key, (ip or "").encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def check_auth_rate_limit(request, action: str = "auth") -> tuple[bool, str | None]:
+    """
+    Check if the client IP has exceeded the auth rate limit (10 attempts / 5 minutes).
+    If within budget, records the attempt and returns (True, None).
+    If exceeded, returns (False, AUTH_RATE_LIMIT_MESSAGE).
+    """
+    ip = get_client_ip(request)
+    ip_h = hash_ip(ip)
+    cutoff = timezone.now() - AUTH_RATE_LIMIT_WINDOW
+
+    count = AuthAttempt.objects.filter(
+        ip_hash=ip_h,
+        action=action,
+        created_at__gte=cutoff,
+    ).count()
+
+    if count >= AUTH_RATE_LIMIT_ATTEMPTS:
+        return False, AUTH_RATE_LIMIT_MESSAGE
+
+    AuthAttempt.objects.create(
+        ip_hash=ip_h,
+        action=action,
+    )
+    return True, None

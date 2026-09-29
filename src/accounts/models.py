@@ -112,7 +112,7 @@ class EventMembership(models.Model):
 
 class JudgeTrackEligibility(models.Model):
     """
-    Which tracks a judge is eligible to review (SCHEMA.md §1.1, F3).
+    Which tracks a judge is eligible to review.
     The fixture's judges[].tracks array imports directly into this,
     one row per track.
     """
@@ -138,4 +138,24 @@ class JudgeTrackEligibility(models.Model):
 
     def __str__(self):
         return f"{self.event_membership.user.email} eligible for {self.track.name}"
+
+
+class AuthAttempt(models.Model):
+    """
+    Sliding window tracker for authentication attempts (login and register)
+    to protect against brute-force and credential stuffing across workers.
+    Stores a keyed HMAC-SHA256 hash of the client IP, never the raw IP.
+    """
+    ip_hash = models.CharField(max_length=64, db_index=True)
+    action = models.CharField(max_length=32, db_index=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        db_table = 'accounts_authattempt'
+        indexes = [
+            models.Index(fields=['ip_hash', 'action', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.action} attempt from {self.ip_hash[:8]}... at {self.created_at}"
 

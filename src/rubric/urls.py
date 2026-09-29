@@ -9,7 +9,6 @@ from accounts.views import (
     login_view,
     logout_view,
 )
-from accounts.views_debug import leaky_scores_view
 from api.views import (
     judge_scores_view,
     csv_export_view,
@@ -67,15 +66,15 @@ from voting.views import (
     organizer_voting_summary_view,
 )
 
-# Admin is intentionally not shipped (PLAN.md P-08)
+# Admin is intentionally not shipped
 urlpatterns = [
     # -----------------------------------------------------------------------
-    # Public Landing Page (UX.md §1)
+    # Public Landing Page
     # -----------------------------------------------------------------------
     path('', landing_page_view, name='landing_page'),
 
     # -----------------------------------------------------------------------
-    # Judging & Organizer UI routes (UX.md §1, §2, §3)
+    # Judging & Organizer UI routes
     # -----------------------------------------------------------------------
     path('judge/queue', judge_queue_view, name='judge_queue'),
     path('judge/ballots/<int:assignment_id>', ballot_view, name='judge_ballot'),
@@ -99,14 +98,14 @@ urlpatterns = [
     path('invite/judge/<str:token>', judge_invite_accept_view, name='judge_invite_accept'),
 
     # -----------------------------------------------------------------------
-    # Teams UI routes (UX.md §1, API.md §2)
+    # Teams UI routes
     # -----------------------------------------------------------------------
     path('teams/new', team_create_view, name='team_create'),
     path('teams/join/<str:code>', team_join_view, name='team_join'),
     path('teams/<int:id>', team_detail_view, name='team_detail'),
 
     # -----------------------------------------------------------------------
-    # Accounts UI routes (UX.md §1, API.md §3)
+    # Accounts UI routes
     # -----------------------------------------------------------------------
     path('accounts/register', register_view, name='register'),
     path('login', login_view, name='login'),
@@ -115,7 +114,7 @@ urlpatterns = [
     path('accounts/logout', logout_view, name='accounts_logout'),
 
     # -----------------------------------------------------------------------
-    # Submissions UI routes (UX.md §1, API.md §2)
+    # Submissions UI routes
     # -----------------------------------------------------------------------
     path('projects', gallery_view, name='gallery'),
     path('projects/new', submit_view, name='submit'),
@@ -135,7 +134,7 @@ urlpatterns = [
     path('api/v1/organizer/voting/summary', organizer_voting_summary_view, name='organizer_voting_summary'),
 
     # -----------------------------------------------------------------------
-    # P-11 routes (API.md §1, .dogfood.toml)
+    # P-11 routes (.dogfood.toml)
     # -----------------------------------------------------------------------
     path('api/judge/scores', judge_scores_view, name='judge_scores'),
     path('api/v1/ballots/<int:assignment_id>', ballot_submit_view, name='ballot_submit'),
@@ -143,16 +142,4 @@ urlpatterns = [
     path('api/v1/organizer/audit-log', organizer_audit_log_view, name='organizer_audit_log'),
     path('api/v1/organizer/audit-log/verify', organizer_audit_verify_view, name='organizer_audit_verify'),
     path('api/export.csv', csv_export_view, name='csv_export'),
-
-    # -----------------------------------------------------------------------
-    # TODO(G8): REMOVE before submission freeze.
-    # Deliberately leaky control-case route with NO policy check (AUTHZ.md §4).
-    # Exists only so the authz coverage test can prove it catches undeclared
-    # routes.  This is not something that should ship.
-    # -----------------------------------------------------------------------
-    path(
-        'debug/_leaky_test_only/<str:judge_id>/scores',
-        leaky_scores_view,
-        name='debug_leaky_scores',
-    ),
 ]

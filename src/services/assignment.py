@@ -116,7 +116,7 @@ def _eligible_by_track(event):
 
 
 def _inject_anchors(event, rng, eligibility_by_track):
-    """Bridge components only through genuine multi-track eligibility (A-05)."""
+    """Bridge components only through genuine multi-track eligibility."""
     injections = []
     while True:
         health = compute_graph_health(event)

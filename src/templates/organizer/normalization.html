@@ -155,6 +155,53 @@
         </div>
       </div>
 
+      <!-- SYNTHETIC VALIDATION SWEEP (100 Seeds, Synthetic clearly labelled) -->
+      <div style="padding: var(--space-md); background: var(--bg-subtle, #f8fafc); border-radius: 6px; border: 1px solid var(--border-subtle, #e2e8f0);" id="synthetic-validation-sweep">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-xs); flex-wrap: wrap; gap: 4px;">
+          <span style="font-size: 0.8125rem; font-weight: 700; text-transform: uppercase; color: #b45309;">
+            Synthetic 100-Seed Sweep (SYNTHETIC)
+          </span>
+          <span class="badge" style="background: #fef3c7; color: #92400e; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; font-weight: 600;">
+            SYNTHETIC &middot; 100 Seeds
+          </span>
+        </div>
+        <div style="font-size: 0.8125rem; color: var(--text-secondary, #64748b); margin-bottom: var(--space-sm);">
+          100 Monte-Carlo seeds evaluating Spearman correlation with planted ground-truth quality:
+        </div>
+        <div style="margin-bottom: var(--space-sm); overflow-x: auto;">
+          <table style="width: 100%; font-size: 0.75rem; border-collapse: collapse; text-align: left;" id="synthetic-sweep-table">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--border-subtle, #e2e8f0); color: var(--text-muted, #94a3b8);">
+                <th style="padding: 2px 4px;">Metric</th>
+                <th style="padding: 2px 4px;">Mean</th>
+                <th style="padding: 2px 4px;">Median</th>
+                <th style="padding: 2px 4px;">Min</th>
+                <th style="padding: 2px 4px;">Max</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid var(--border-subtle, #e2e8f0);">
+                <td style="padding: 4px; font-weight: 600; color: var(--text-primary, #0f172a);">Raw &rho;</td>
+                <td style="padding: 4px; font-family: monospace;" id="sweep-raw-mean">{{ synthetic_sweep.raw_mean|floatformat:4 }}</td>
+                <td style="padding: 4px; font-family: monospace;" id="sweep-raw-median">{{ synthetic_sweep.raw_median|floatformat:4 }}</td>
+                <td style="padding: 4px; font-family: monospace;" id="sweep-raw-min">{{ synthetic_sweep.raw_min|floatformat:4 }}</td>
+                <td style="padding: 4px; font-family: monospace;" id="sweep-raw-max">{{ synthetic_sweep.raw_max|floatformat:4 }}</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px; font-weight: 600; color: #16a34a;">Norm &rho;</td>
+                <td style="padding: 4px; font-family: monospace; color: #16a34a; font-weight: 700;" id="sweep-norm-mean">{{ synthetic_sweep.norm_mean|floatformat:4 }}</td>
+                <td style="padding: 4px; font-family: monospace; color: #16a34a;" id="sweep-norm-median">{{ synthetic_sweep.norm_median|floatformat:4 }}</td>
+                <td style="padding: 4px; font-family: monospace; color: #16a34a;" id="sweep-norm-min">{{ synthetic_sweep.norm_min|floatformat:4 }}</td>
+                <td style="padding: 4px; font-family: monospace; color: #16a34a;" id="sweep-norm-max">{{ synthetic_sweep.norm_max|floatformat:4 }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="font-size: 0.8125rem; color: var(--text-primary, #0f172a); background: #fefce8; border: 1px solid #fef08a; padding: var(--space-xs) var(--space-sm); border-radius: 4px;" id="sweep-win-summary">
+          <strong>Normalized Beats Raw:</strong> In <strong>{{ synthetic_sweep.win_count }}/{{ synthetic_sweep.num_seeds }}</strong> seeds (<strong>{{ synthetic_sweep.win_percentage|floatformat:1 }}%</strong>, fraction: <span id="sweep-win-fraction">{{ synthetic_sweep.win_fraction|floatformat:2 }}</span>).
+        </div>
+      </div>
+
     </div>
   </div>
 

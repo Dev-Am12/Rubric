@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Rubric domain apps (SCHEMA.md §3)
+    # Rubric domain apps
     'accounts',
     'events',
     'teams',
@@ -67,7 +67,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # Rubric auth: resolves raw tokens into request.actor (AUTHZ.md §1)
+    # Rubric auth: resolves raw tokens into request.actor
     'accounts.middleware.AuthMiddleware',
 ]
 

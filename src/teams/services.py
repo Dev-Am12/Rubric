@@ -1,10 +1,5 @@
 """
 Service layer for teams.
-
-Design reference:
-  - SCHEMA.md §0.1 (all mutations through service layer)
-  - SCHEMA.md §1.1 (Team, TeamMembership fields)
-  - API.md §2 (services.teams.create, services.teams.join)
 """
 
 import secrets
@@ -116,7 +111,7 @@ def join_team(actor, team_id, code):
 
 def join_by_code(actor, code):
     """
-    Join an existing team by invite code directly (SCHEMA.md §1.1, API.md §2).
+    Join an existing team by invite code directly.
     Rejects duplicate membership.
     """
     require(actor, not actor.is_anonymous)

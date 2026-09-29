@@ -5,7 +5,7 @@ Coverage:
   1. AuthMiddleware: token resolution, expiry, anonymous fallback
   2. Actor / AnonymousActor: role booleans, independence, defaults-closed
   3. require() + exception handler: 401 vs 403 mapping
-  4. Route×role coverage mechanism (AUTHZ.md §4): undeclared route detection
+  4. Route×role coverage mechanism: undeclared route detection
   5. Control case: the leaky debug route proves the mechanism catches it
 
 All tests use fixture-independent synthetic users — no imported fixture
@@ -46,7 +46,7 @@ class AnonymousActorTest(TestCase):
 class ActorRoleBooleanTest(TestCase):
     """
     Actor role booleans are independent — a user can hold multiple roles
-    simultaneously (AUTHZ.md §1, stress-test F12).
+    simultaneously.
     """
 
     def setUp(self):
@@ -257,7 +257,7 @@ class AuthMiddlewareTokenResolutionTest(TestCase):
 
 class PermissionDenied401vs403Test(TestCase):
     """
-    The critical 401 vs 403 distinction (AUTHZ.md §1):
+    The critical 401 vs 403 distinction:
       AnonymousActor + PermissionDenied → 401
       resolved Actor + PermissionDenied → 403
 
@@ -333,7 +333,7 @@ class PermissionDenied401vs403Test(TestCase):
 
 class AuthzCoverageTest(TestCase):
     """
-    Route×role coverage mechanism (AUTHZ.md §4):
+    Route×role coverage mechanism:
     Every route discovered in the URLconf must have a declared authorization
     expectation in authz_expectations.yaml.
 
@@ -396,68 +396,36 @@ class AuthzCoverageTest(TestCase):
 
 class ControlCaseLeakyRouteTest(TestCase):
     """
-    Prove the control case from AUTHZ.md §4 works:
-    The deliberately leaky debug route has no policy check at all.
-
-    This test verifies:
-    1. The route is accessible with no auth (proves it's truly unguarded)
-    2. If we REMOVE its entry from expectations, the coverage test catches it
+    Prove the control case works: the route-coverage alarm fails on undeclared routes.
+    The previous leaky debug route in production has been removed so nothing leaky ships;
+    the control case is now proven via a synthetic URLconf containing an undeclared route.
     """
 
-    def test_leaky_route_is_accessible_without_auth(self):
-        """The leaky debug route returns 200 with no auth — by design."""
+    def test_no_leaky_route_ships_in_production(self):
+        """The production URLconf has no leaky debug route and requests return 404."""
         response = self.client.get('/debug/_leaky_test_only/jdg_07/scores')
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 404)
 
-    def test_leaky_route_is_in_expectations(self):
+        route_names = AuthzCoverageTest()._get_all_route_names()
+        self.assertNotIn('debug_leaky_scores', route_names)
+
+        expectations = AuthzCoverageTest()._load_expectations()
+        self.assertNotIn('debug_leaky_scores', expectations)
+
+    @override_settings(ROOT_URLCONF='tests.urls_synthetic_undeclared')
+    def test_coverage_alarm_fails_on_undeclared_route(self):
         """
-        The control-case route IS in authz_expectations.yaml (marked as
-        intentionally undeclared).  This proves:
-        - The mechanism correctly catches routes that ARE in the URLconf
-        - The expectation file is the thing that makes the coverage test pass
-        - Removing the entry would cause the coverage test to fail
+        Prove the mechanism works: when an undeclared route exists in the active URLconf,
+        the route-coverage check raises an AssertionError identifying that exact route.
         """
-        import yaml
-        from pathlib import Path
-        yaml_path = Path(__file__).resolve().parent / 'authz_expectations.yaml'
-        with open(yaml_path, 'r') as f:
-            expectations = yaml.safe_load(f) or {}
-        self.assertIn('debug_leaky_scores', expectations)
-        self.assertIn('TODO', expectations['debug_leaky_scores'].get('note', ''))
+        coverage_test = AuthzCoverageTest()
+        with self.assertRaises(AssertionError) as ctx:
+            coverage_test.test_every_route_has_declared_expectation()
 
-    def test_mechanism_catches_undeclared_route(self):
-        """
-        Prove the mechanism works: if we remove the leaky route from
-        expectations and re-run the coverage check logic, it correctly
-        identifies the route as undeclared.
-
-        This is the "test that the test can fail" — the control case
-        from AUTHZ.md §4.
-        """
-        from django.urls import get_resolver
-        from django.urls.resolvers import URLPattern, URLResolver
-
-        # Collect all named routes from URLconf
-        def collect_names(patterns):
-            names = set()
-            for p in patterns:
-                if isinstance(p, URLPattern) and p.name:
-                    names.add(p.name)
-                elif isinstance(p, URLResolver):
-                    names.update(collect_names(p.url_patterns))
-            return names
-
-        route_names = collect_names(get_resolver().url_patterns)
-
-        # Simulate expectations WITHOUT the leaky route
-        empty_expectations = {}
-
-        undeclared = [n for n in route_names if n not in empty_expectations]
-
-        # The leaky route MUST appear in the undeclared list
         self.assertIn(
-            'debug_leaky_scores', undeclared,
-            "The coverage mechanism failed to catch the undeclared leaky route! "
-            "This means the mechanism itself is broken."
+            'synthetic_control_case_undeclared',
+            str(ctx.exception),
+            "The coverage mechanism failed to report the synthetic undeclared route!",
         )
+
 

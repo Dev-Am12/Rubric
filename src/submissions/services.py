@@ -1,12 +1,6 @@
 """
 Service layer for submissions (projects).
 
-Design reference:
-  - SCHEMA.md §0.1 (all mutations through service layer)
-  - SCHEMA.md §1.1 (Project fields, draft-and-edit-until-deadline)
-  - API.md §2 (services.submissions.*)
-  - AUTHZ.md §3.1 (draft visibility, deadline enforcement)
-
 The deadline check in update() and submit() uses select_for_update() on
 the Event row inside the same transaction as the write — this is the real
 enforcement, not a CSRF side effect or a form-level check.
@@ -103,8 +97,7 @@ def update(actor, project_id, **fields):
 
     Owner (team member) only.  Rejects with PermissionDenied if
     now() > event.submissions_close_at, checked inside the same
-    transaction as the write via select_for_update() on the Event row
-    (SCHEMA.md §1.1).
+    transaction as the write via select_for_update() on the Event row.
 
     Organizers can override the deadline (logged).
     """
@@ -157,7 +150,7 @@ def update(actor, project_id, **fields):
 
 def are_titles_near_identical(title_a, title_b, threshold=0.70):
     """
-    Check if two titles are identical or near-identical per NORMALIZATION.md D-02.
+    Check if two titles are identical or near-identical.
     Collapses whitespace and lowercases before comparison.
     Returns (is_match, similarity_ratio).
     """
@@ -219,7 +212,7 @@ def _format_time_gap(t1, t2):
 
 def detect_and_flag_duplicates(project):
     """
-    General duplicate-submission detector per NORMALIZATION.md D-02:
+    General duplicate-submission detector:
     Checks for an existing SUBMITTED project by the same team with a near-identical
     title, submitted in the same event.
 
@@ -276,7 +269,7 @@ def detect_and_flag_duplicates(project):
                 earlier.duplicate_flag_reason = (
                     f"Same team ({team_label}), near-identical title "
                     f"({similarity:.0%} match), submitted {time_str} apart. "
-                    f"Earlier submission flagged against later canonical one per NORMALIZATION.md D-02."
+                    f"Earlier submission flagged against later canonical one."
                 )
                 earlier.save(update_fields=['is_duplicate_of', 'duplicate_flag_reason'])
 
@@ -299,7 +292,7 @@ def detect_and_flag_duplicates(project):
                 )
 
             logger.info(
-                "Duplicate detected per D-02: %s flagged as duplicate of %s (%s)",
+                "Duplicate detected: %s flagged as duplicate of %s (%s)",
                 earlier.external_id or f"Project#{earlier.id}",
                 later.external_id or f"Project#{later.id}",
                 earlier.duplicate_flag_reason,
@@ -311,7 +304,7 @@ def detect_and_flag_duplicates(project):
 
 def detect_duplicates_for_event(event):
     """
-    Scan all submitted projects in an event for duplicates per D-02.
+    Scan all submitted projects in an event for duplicates.
     Processes projects in chronological order per team.
     Returns list of flagged (earlier) projects.
     """
@@ -338,7 +331,7 @@ def submit(actor, project_id):
 
     Owner (team member) only, before deadline.
     Sets status=SUBMITTED and submitted_at=now().
-    Runs duplicate detection per NORMALIZATION.md D-02.
+    Runs duplicate detection.
     """
     require(actor, not actor.is_anonymous)
 
@@ -369,7 +362,7 @@ def submit(actor, project_id):
             'title': project.title,
         })
 
-        # Run general duplicate detection per NORMALIZATION.md D-02
+        # Run general duplicate detection
         detect_and_flag_duplicates(project)
 
     return project
@@ -421,7 +414,7 @@ def get(actor, project_id):
     Get a project by ID.
 
     Public if SUBMITTED. If DRAFT, only owner (team member) or organizer
-    can view (AUTHZ.md §3.1).
+    can view.
     """
     try:
         project = Project.objects.select_related(

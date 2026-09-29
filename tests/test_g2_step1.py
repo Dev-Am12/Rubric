@@ -43,10 +43,7 @@ class DuplicateDirectionTest(TestCase):
     the later canonical one (prj_41, submitted 17:57):
       prj_07.is_duplicate_of = prj_41
       prj_41.is_duplicate_of = None
-
-    This is the corrected direction per SCHEMA.md §1.1 and
-    NORMALIZATION.md D-02. An earlier version of SCHEMA.md §2 had it
-    backwards (prj_41 → prj_07).
+    This is the corrected direction where the earlier submission points to the later canonical one.
     """
 
     def setUp(self):

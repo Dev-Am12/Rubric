@@ -1,8 +1,7 @@
 """
 Placeholder views for P-11 route skeleton.
 
-These endpoints establish the exact route paths declared in .dogfood.toml
-and API.md §1:
+These endpoints establish the exact route paths declared in .dogfood.toml:
   - gallery (/projects)
   - submit (/projects/new)
   - judge_scores (/api/judge/scores)

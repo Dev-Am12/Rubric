@@ -8,11 +8,6 @@ Imports:
   4. All 41 projects → Project (with corrected is_duplicate_of direction)
   5. Four persona AuthTokens (organizer, judge_a, judge_b, participant)
 
-Design reference:
-  - SCHEMA.md §2 (fixture→schema mapping)
-  - SCHEMA.md §1.1 (is_duplicate_of: prj_07 → prj_41, the EARLIER flags
-    itself against the LATER canonical one; NORMALIZATION.md D-02)
-
 Note: scores[] import is deferred to G3 (requires Rubric/Ballot/BallotScore
 models from judging app). AuditLogEntry is G5 scope; duplicate flagging is
 logged via Python's logging module for now.
@@ -85,21 +80,29 @@ class Command(BaseCommand):
             help="Safe to re-run without duplicating anything (default behavior)",
         )
 
+    def _seed_demo_logins_enabled(self):
+        val = os.environ.get('RUBRIC_SEED_DEMO_LOGINS', 'true').strip().lower()
+        return val in ('1', 'true', 'yes', 'on')
+
     def handle(self, *args, **options):
         fixture_path = find_fixtures_file(options.get('fixtures'))
         with open(fixture_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
+        seed_demo = self._seed_demo_logins_enabled()
+
         with transaction.atomic():
-            event = self._import_event(data)
+            event = self._import_event(data, seed_demo=seed_demo)
             track_map = self._import_tracks(data, event)
-            self._import_organizer(event)
+            if seed_demo:
+                self._import_organizer(event)
             self._import_judges(data, event, track_map)
             team_map = self._import_teams(data, event)
             self._import_projects(data, event, track_map, team_map)
             rubric = self._import_rubric(event)
             self._import_scores(data, event, rubric)
-            self._import_persona_tokens(data, event)
+            if seed_demo:
+                self._import_persona_tokens(data, event)
 
             from services import audit
             audit.record(
@@ -112,16 +115,20 @@ class Command(BaseCommand):
                     'teams_count': len(team_map),
                     'projects_count': len(data.get('projects', [])),
                     'scores_count': len(data.get('scores', [])),
+                    'demo_logins': seed_demo,
                 },
             )
 
-        self._print_seed_tokens()
+        if seed_demo:
+            self._print_seed_tokens()
+        else:
+            self._print_no_demo_instructions()
 
     # ------------------------------------------------------------------
     # Event + Tracks
     # ------------------------------------------------------------------
 
-    def _import_event(self, data):
+    def _import_event(self, data, seed_demo=True):
         evt_data = data['event']
         evt_id = evt_data['id']
         evt_name = evt_data['name']
@@ -134,14 +141,17 @@ class Command(BaseCommand):
 
         slug = slugify(evt_name) or 'sample-hack-2026'
 
-        # We need the organizer user for created_by — get or create first
-        organizer_user, _ = User.objects.update_or_create(
-            email='organizer@rubric.local',
-            defaults={
-                'display_name': 'Organizer',
-                'is_site_admin': True,
-            },
-        )
+        organizer_user = None
+        if seed_demo:
+            organizer_user, _ = User.objects.update_or_create(
+                email='organizer@rubric.local',
+                defaults={
+                    'display_name': 'Organizer',
+                    'is_site_admin': True,
+                },
+            )
+        else:
+            organizer_user = User.objects.filter(is_site_admin=True).first()
 
         # Ensure no other event violates the unique partial constraint before marking current
         Event.objects.exclude(external_id=evt_id).filter(is_current=True).update(is_current=False)
@@ -346,13 +356,13 @@ class Command(BaseCommand):
                 },
             )
 
-        # Second pass: detect and flag duplicate submissions per NORMALIZATION.md D-02
+        # Second pass: detect and flag duplicate submissions
         # (general duplicate detector replaces hardcoded prj_07/prj_41 assignment)
         from submissions.services import detect_duplicates_for_event
         flagged = detect_duplicates_for_event(event)
         for earlier in flagged:
             logger.info(
-                "Duplicate flag set: %s.is_duplicate_of = %s (per D-02). Reason: %s",
+                "Duplicate flag set: %s.is_duplicate_of = %s. Reason: %s",
                 earlier.external_id or earlier.id,
                 earlier.is_duplicate_of.external_id or earlier.is_duplicate_of.id,
                 earlier.duplicate_flag_reason,
@@ -420,3 +430,11 @@ class Command(BaseCommand):
         self.stdout.write(
             f"  participant: Authorization: Bearer {SEED_TOKENS['participant']}"
         )
+
+    def _print_no_demo_instructions(self):
+        self.stdout.write("")
+        self.stdout.write("seeded fixture data without demo logins (RUBRIC_SEED_DEMO_LOGINS=false).")
+        self.stdout.write("No public demo tokens or persona accounts were created.")
+        self.stdout.write("To create an administrator account, run:")
+        self.stdout.write("  python manage.py create_organizer --email <email> --password <password> --name <name>")
+

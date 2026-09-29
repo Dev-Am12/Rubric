@@ -27,7 +27,7 @@ class Event(models.Model):
         default=VotingAccess.OPEN,
     )
     votes_per_voter = models.PositiveIntegerField(null=True, blank=True)
-    # Secret per-event entropy for OPEN voter fingerprints and V-03 ballot order.
+    # Secret per-event entropy for OPEN voter fingerprints and stable ballot order.
     voting_seed = models.CharField(max_length=64, default=generate_voting_seed, editable=False)
     is_current = models.BooleanField(default=False)
     created_by = models.ForeignKey(

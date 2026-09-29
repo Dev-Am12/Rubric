@@ -1,7 +1,7 @@
 /* ==========================================================================
    Rubric Design System
-   UX.md §4: Clean, simple, professional, quietly sophisticated.
-   P-05: Hand-written CSS with design tokens; all assets vendored.
+   Clean, simple, professional, quietly sophisticated.
+   Hand-written CSS with design tokens; all assets vendored.
    ========================================================================== */
 
 :root {
@@ -16,7 +16,7 @@
   --text-muted: #64748b;
   --text-inverse: #ffffff;
 
-  /* Accent (Single functional accent per UX.md §4) */
+  /* Accent (Single functional accent) */
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
   --accent-subtle: #eff6ff;

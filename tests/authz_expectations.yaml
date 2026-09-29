@@ -1,5 +1,5 @@
-# Authorization expectations — the machine-readable twin of AUTHZ.md §3.
-# This file is loaded by the route×role coverage test (AUTHZ.md §4).
+# Authorization expectations.
+# This file is loaded by the route×role coverage test.
 #
 # Every route discovered via URLconf introspection MUST have an entry here,
 # or the build fails.  This is what makes "I added a route at 3am without
@@ -10,27 +10,13 @@
 #     declared: true/false
 #     note: optional explanation
 #
-# Routes with declared=false MUST be removed before submission freeze
-# (PLAN.md §5.6).  Their only purpose is to prove the coverage test
-# itself can catch undeclared routes (AUTHZ.md §4, control case).
+# Routes with declared=false MUST be removed before submission freeze.
+# Their only purpose is to prove the coverage test
+# itself can catch undeclared routes.
 
 # -----------------------------------------------------------------------
-# Control case: the deliberately-leaky test-only route (AUTHZ.md §4).
-# This route has NO policy check.  It exists purely so the authz coverage
-# test can prove it catches an undeclared route.  REMOVE BEFORE FREEZE.
-# -----------------------------------------------------------------------
-debug_leaky_scores:
-  declared: true
-  note: >
-    INTENTIONALLY UNDECLARED IN AUTHZ.md §3 — this is the control case.
-    It has no policy check at all.  The coverage test should catch it as
-    "present in URLconf but with no real authorization."
-    TODO: Remove this route and this entry before submission (PLAN §5.6).
-
-# -----------------------------------------------------------------------
-# P-11 routes (API.md §1, .dogfood.toml, AUTHZ.md §3)
-# Exact paths registered from day one. In G1 Step 2, these point to 200
-# placeholder views. Full authorization and business logic wired at G2/G3/G4.
+# P-11 routes (.dogfood.toml)
+# Exact paths registered from day one. Full authorization and business logic wired.
 # -----------------------------------------------------------------------
 gallery:
   declared: true
@@ -38,8 +24,8 @@ gallery:
   method: GET
   auth: public
   note: >
-    P-11 public project gallery (API.md §2). In G2, shows submitted
-    projects only (AUTHZ.md §3.1, D-13). Public read.
+    P-11 public project gallery. Shows submitted
+    projects only. Public read.
 
 submit:
   declared: true
@@ -47,8 +33,8 @@ submit:
   method: GET, POST
   auth: participant
   note: >
-    P-11 project submission (API.md §2, UX.md §1). Requires participant
-    actor for their own team while submissions are open (AUTHZ.md §3.1).
+    P-11 project submission. Requires participant
+    actor for their own team while submissions are open.
 
 project_detail:
   declared: true
@@ -56,8 +42,8 @@ project_detail:
   method: GET
   auth: public_if_submitted_else_owner_or_organizer
   note: >
-    Project detail (API.md §2, UX.md §1). Public if status=SUBMITTED;
-    draft submissions visible only to team members and organizers (AUTHZ.md §3.1).
+    Project detail. Public if status=SUBMITTED;
+    draft submissions visible only to team members and organizers.
 
 project_edit:
   declared: true
@@ -65,7 +51,7 @@ project_edit:
   method: GET, POST
   auth: participant_owner
   note: >
-    Edit project submission (UX.md §1, API.md §2). Team members and organizers
+    Edit project submission. Team members and organizers
     can edit before the event deadline.
 
 my_submissions:
@@ -74,7 +60,7 @@ my_submissions:
   method: GET
   auth: participant
   note: >
-    Participant own submissions list (UX.md §1). Shows team's projects and
+    Participant own submissions list. Shows team's projects and
     displays the duplicate-flag banner when is_duplicate_of is set.
 
 judge_scores:
@@ -83,8 +69,8 @@ judge_scores:
   method: GET
   auth: judge_or_organizer
   note: >
-    P-11 judge own scores (API.md §2). In G3, returns ballots for the
-    requesting judge, or all ballots if organizer (AUTHZ.md §3.2, F1).
+    P-11 judge own scores. Returns ballots for the
+    requesting judge, or all ballots if organizer.
 
 peer_scores:
   declared: true
@@ -92,9 +78,9 @@ peer_scores:
   method: GET
   auth: organizer_only_if_different_judge
   note: >
-    P-11 peer scores isolation probe (API.md §2, with ?judge= param).
-    In G3, judges cannot see another judge's scores (403); only
-    organizers can inspect peer scores (AUTHZ.md §3.2, spec.md trap).
+    P-11 peer scores isolation probe (with ?judge= param).
+    Judges cannot see another judge's scores (403); only
+    organizers can inspect peer scores.
 
 csv_export:
   declared: true
@@ -102,15 +88,15 @@ csv_export:
   method: GET
   auth: organizer
   note: >
-    P-11 CSV export of final rankings and scores (API.md §2). In G4,
-    organizer-only export endpoint (AUTHZ.md §3.2).
+    P-11 CSV export of final rankings and scores.
+    Organizer-only export endpoint.
 
 ballot_submit:
   declared: true
   path: /api/v1/ballots/{assignment_id}
   method: POST
   auth: assigned_judge
-  note: Judge may submit only their own assignment (AUTHZ.md §3.2).
+  note: Judge may submit only their own assignment.
 
 organizer_progress:
   declared: true
@@ -125,7 +111,7 @@ judge_queue:
   method: GET
   auth: judge
   note: >
-    Judge assignment queue (UX.md §1, AUTHZ.md §3.2). Shows assigned projects
+    Judge assignment queue. Shows assigned projects
     for the requesting judge only.
 
 judge_ballot:
@@ -134,7 +120,7 @@ judge_ballot:
   method: GET, POST
   auth: assigned_judge
   note: >
-    Two-pane ballot scoring screen (UX.md §2, AUTHZ.md §3.2). Accessible only to
+    Two-pane ballot scoring screen. Accessible only to
     the judge assigned to this assignment.
 
 judge_ballot_autosave:
@@ -143,7 +129,7 @@ judge_ballot_autosave:
   method: POST
   auth: assigned_judge
   note: >
-    HTMX autosave for in-progress scoring (UX.md §2). Accessible only to the
+    HTMX autosave for in-progress scoring. Accessible only to the
     judge assigned to this assignment.
 
 organizer_progress_page:
@@ -152,7 +138,7 @@ organizer_progress_page:
   method: GET
   auth: organizer
   note: >
-    Organizer progress dashboard UI (UX.md §1, §3). Shows project review
+    Organizer progress dashboard UI. Shows project review
     completion numbers.
 
 organizer_dashboard:
@@ -161,7 +147,7 @@ organizer_dashboard:
   method: GET, POST
   auth: organizer
   note: >
-    Organizer dashboard UI (UX.md §3). Displays live review progress,
+    Organizer dashboard UI. Displays live review progress,
     track under-coverage, graph health metrics, and integrity flags with
     duplicate-restore action.
 
@@ -171,7 +157,7 @@ organizer_assignments:
   method: GET, POST
   auth: organizer
   note: >
-    Organizer assignments management (UX.md §1, API.md §2). Trigger
+    Organizer assignments management. Trigger
     assignment runs and inspect AssignmentRun history and graph connectivity.
 
 organizer_normalization:
@@ -180,7 +166,7 @@ organizer_normalization:
   method: GET, POST
   auth: organizer
   note: >
-    Organizer normalization proof view (UX.md §1, §3, API.md §2). Trigger
+    Organizer normalization proof view. Trigger
     normalization runs and view the deterministic raw/normalized/rank-change table.
 
 organizer_audit_log_page:
@@ -221,7 +207,7 @@ register:
   method: GET, POST
   auth: public
   note: >
-    User registration form and account creation endpoint (API.md §3).
+    User registration form and account creation endpoint. Rate limited to 10 attempts / 5 minutes per IP (returns 429).
 
 login:
   declared: true
@@ -229,7 +215,7 @@ login:
   method: GET, POST
   auth: public
   note: >
-    User authentication form and session token issue endpoint (API.md §3).
+    User authentication form and session token issue endpoint. Rate limited to 10 attempts / 5 minutes per IP (returns 429).
 
 accounts_login:
   declared: true
@@ -451,7 +437,7 @@ organizer_voting_summary:
     participant: 403
     judge: 403
     organizer: 200
-  note: One response includes counts per attempt outcome and per project for V-06 verification.
+  note: One response includes counts per attempt outcome and per project for verification.
 
 organizer_voting_open_now:
   declared: true

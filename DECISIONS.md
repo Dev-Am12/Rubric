@@ -2,7 +2,7 @@
 
 Every non-trivial design or engineering judgment call that shapes how Rubric
 behaves, or how it should be read — the "why," not routine implementation
-mechanics (those live in LOGS.md). Entries are never edited or renumbered
+mechanics (those live in mechanical logs). Entries are never edited or renumbered
 once written; a decision that changes later gets a new, later-numbered entry
 that says so explicitly, so the history stays honest.
 
@@ -27,10 +27,12 @@ that says so explicitly, so the history stays honest.
 - [17. Public voting supports open-link and authenticated access only](#17-public-voting-supports-open-link-and-authenticated-access-only)
 - [18. Vote budgets are configurable and withdrawal restores capacity](#18-vote-budgets-are-configurable-and-withdrawal-restores-capacity)
 - [19. Voter fingerprints minimize stored identity while preserving rate limits](#19-voter-fingerprints-minimize-stored-identity-while-preserving-rate-limits)
-- [20. Voting access mode locks after the first recorded action](#20-voting-access-mode-locks-after-the-first-recorded-action)
+- [20. Voting access mode locks after the first recorded action](#20-voting-access-mode-locks-after-first-recorded-action)
 - [21. Organizers can open or close voting immediately with an audit record](#21-organizers-can-open-or-close-voting-immediately-with-an-audit-record)
 - [22. Event authority is scoped to the event being changed](#22-event-authority-is-scoped-to-the-event-being-changed)
 - [23. Voting is a secret ballot with pseudonymous voter identities](#23-voting-is-a-secret-ballot-with-pseudonymous-voter-identities)
+- [24. Control case for route authorization now lives only in the test suite](#24-control-case-for-route-authorization-now-lives-only-in-the-test-suite)
+- [25. Public demo credentials exist for automated evaluation and can be disabled in production](#25-public-demo-credentials-exist-for-automated-evaluation-and-can-be-disabled-in-production)
 
 ---
 
@@ -138,7 +140,7 @@ that says so explicitly, so the history stays honest.
 
 **Decision:** Describe constant judges by the invariant the shrinkage formula actually provides: their z-score contribution is a fixed, non-differentiating offset across their projects, not necessarily a value near zero. Treat rank changes as context-sensitive display movement and assess score changes alongside local score gaps and review counts.
 
-**Rationale:** D-03's earlier wording said a constant judge's contribution "converges toward zero." We implemented the displayed formula exactly and measured the real fixture: `jdg_07` contributes 0.5115488667 to each of `prj_09`, `prj_17`, and `prj_19`. The equal contribution is non-differentiating, while its absolute value depends on the pooled mean. Leave-one-out measurements showed score changes for `prj_09` and `prj_17` in the same range as a non-constant three-assignment control; `prj_19`'s larger change coincides with the remaining reviewer count falling to one. Baseline neighbor gaps also showed much tighter score spacing around `prj_09` and `prj_17` than around the control projects. Rank movement was therefore dropped as a T2 assertion: rank is sensitive to local crowding even when score changes are comparable. This correction came from measuring the fixture before asserting the test, not from changing the formula to fit an overstrong claim.
+**Rationale:** The constant-judge shrinkage policy's earlier wording said a constant judge's contribution "converges toward zero." We implemented the displayed formula exactly and measured the real fixture: `jdg_07` contributes 0.5115488667 to each of `prj_09`, `prj_17`, and `prj_19`. The equal contribution is non-differentiating, while its absolute value depends on the pooled mean. Leave-one-out measurements showed score changes for `prj_09` and `prj_17` in the same range as a non-constant three-assignment control; `prj_19`'s larger change coincides with the remaining reviewer count falling to one. Baseline neighbor gaps also showed much tighter score spacing around `prj_09` and `prj_17` than around the control projects. Rank movement was therefore dropped as a T2 assertion: rank is sensitive to local crowding even when score changes are comparable. This correction came from measuring the fixture before asserting the test, not from changing the formula to fit an overstrong claim.
 
 **In plain terms:** The formula did not make the constant judge's contribution zero; it made the contribution the same on each of that judge's projects. We measured score changes and neighboring score gaps before revising the claim, and documented that ranks can move sharply in a crowded field.
 
@@ -270,3 +272,23 @@ To ensure safety against accidental disruption, event creation explicitly leaves
 **Limits:** An operator with both the database and `SECRET_KEY` can re-derive pseudonyms. Organizers can reconstruct live tallies from the audit log, but already have access to live tallies by design. NAT co-tenants share a budget and could withdraw one another's votes from that shared ballot. AUTH mode is recommended when the result matters.
 
 **In plain terms:** Votes are not labeled with a voter's account in the audit history. Signed-in voting is private from database-only readers; open-link voting shares one ballot among people at the same public IP. The system still records voting activity for integrity checks, and the operator can connect private identities if they control both the database and application secret.
+
+---
+
+## 24. Control case for route authorization now lives only in the test suite
+
+**Decision:** The deliberate leaky debug route (`/debug/_leaky_test_only/...`) and its corresponding URLconf entry have been removed from the production codebase. The proof that the route×role coverage alarm catches undeclared routes is now exercised exclusively inside the automated test suite using a synthetic URLconf containing an undeclared route. Decision #3 remains intact as a historical record of the control-case design.
+
+**Rationale:** Shipping even a quarantined debug route in production violates the zero-leak principle and creates unnecessary attack surface. The route-coverage mechanism itself does not require a production endpoint to prove its failure mode: testing the checker against a synthetic URLconf with an undeclared pattern confirms the alarm fires and raises an assertion error. Nothing leaky ships in production.
+
+**In plain terms:** The deliberate leak used to test the route alarm was removed from the live website and moved entirely into an automated test. The alarm is still proven to work, but the application ships with no debug backdoor.
+
+---
+
+## 25. Public demo credentials exist for automated evaluation and can be disabled in production
+
+**Decision:** Pre-seeded demo credentials and public bearer tokens exist so that offline automated evaluation harnesses can inspect the system without manual bootstrapping. In production deployments, these demo accounts and printed tokens can be completely disabled by setting the environment variable `RUBRIC_SEED_DEMO_LOGINS=false`. When set to false, `seed_fixtures` imports the core event data and projects but creates no persona accounts or public tokens, and instead prints instructions for creating a custom organizer via `create_organizer`.
+
+**Rationale:** The evaluation checker requires predictable test tokens printed at boot to authenticate as judges, participants, and organizers. However, a production deployment must never expose hardcoded public tokens or pre-seeded credentials. Providing an explicit, environment-gated switch keeps automated grading reproducible by default while providing a clean hardening path for real-world deployments.
+
+**In plain terms:** Default demo logins exist so the automated checker can test the portal immediately upon boot. Setting `RUBRIC_SEED_DEMO_LOGINS=false` turns off all pre-created demo accounts and tokens so real events can run securely.

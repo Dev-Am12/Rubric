@@ -244,7 +244,7 @@ def run(actor, target_k=None, allow_disconnected_ranking=False):
     }
     disconnected = len(components) > 1
 
-    # D-05: disconnected groups get independent pools and independent ranks
+    # Disconnected groups get independent pools and independent ranks
     # unless the organizer explicitly acknowledges cross-component ranking.
     values_by_component = defaultdict(list)
     for observation in observations:
@@ -653,6 +653,111 @@ def synthetic_validation(seed=2026):
     raw_spearman = spearman(raw_by_project, true_quality)
     norm_spearman = spearman(norm_by_project, true_quality)
     return SyntheticValidationResult(raw_spearman, norm_spearman, seed=seed)
+
+
+class SyntheticValidationSweepResult:
+    """Container for synthetic validation sweep metrics supporting dict, attribute, and tuple access."""
+
+    def __init__(
+        self,
+        raw_mean,
+        raw_median,
+        raw_min,
+        raw_max,
+        norm_mean,
+        norm_median,
+        norm_min,
+        norm_max,
+        win_fraction,
+        num_seeds=100,
+        win_count=None,
+    ):
+        self.raw_mean = float(raw_mean)
+        self.raw_median = float(raw_median)
+        self.raw_min = float(raw_min)
+        self.raw_max = float(raw_max)
+
+        self.norm_mean = float(norm_mean)
+        self.norm_median = float(norm_median)
+        self.norm_min = float(norm_min)
+        self.norm_max = float(norm_max)
+
+        # Convenient aliases
+        self.normalized_mean = self.norm_mean
+        self.normalized_median = self.norm_median
+        self.normalized_min = self.norm_min
+        self.normalized_max = self.norm_max
+
+        self.win_fraction = float(win_fraction)
+        self.fraction_beats_raw = self.win_fraction
+        self.win_percentage = self.win_fraction * 100.0
+        self.num_seeds = int(num_seeds)
+        self.total_seeds = self.num_seeds
+        self.win_count = int(win_count if win_count is not None else round(self.win_fraction * self.num_seeds))
+
+    def __getitem__(self, item):
+        if hasattr(self, item):
+            return getattr(self, item)
+        raise KeyError(item)
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def __repr__(self):
+        return (
+            f"SyntheticValidationSweepResult(num_seeds={self.num_seeds}, "
+            f"raw_mean={self.raw_mean:.4f}, norm_mean={self.norm_mean:.4f}, "
+            f"win_fraction={self.win_fraction:.4f})"
+        )
+
+
+def synthetic_validation_sweep(seeds=range(100)):
+    """Run synthetic validation sweep across multiple seeds and compute summary statistics.
+
+    Computes mean, median, min, max of raw and normalized Spearman, and the
+    fraction of seeds where normalized beats raw.
+    """
+    raw_scores = []
+    norm_scores = []
+    seeds_list = list(seeds)
+
+    for seed in seeds_list:
+        res = synthetic_validation(seed=seed)
+        raw_scores.append(res.raw_spearman)
+        norm_scores.append(res.normalized_spearman)
+
+    import statistics
+
+    n = len(seeds_list)
+    raw_mean = statistics.mean(raw_scores) if raw_scores else 0.0
+    raw_median = statistics.median(raw_scores) if raw_scores else 0.0
+    raw_min = min(raw_scores) if raw_scores else 0.0
+    raw_max = max(raw_scores) if raw_scores else 0.0
+
+    norm_mean = statistics.mean(norm_scores) if norm_scores else 0.0
+    norm_median = statistics.median(norm_scores) if norm_scores else 0.0
+    norm_min = min(norm_scores) if norm_scores else 0.0
+    norm_max = max(norm_scores) if norm_scores else 0.0
+
+    win_count = sum(1 for r, nm in zip(raw_scores, norm_scores) if nm > r)
+    win_fraction = win_count / n if n > 0 else 0.0
+
+    return SyntheticValidationSweepResult(
+        raw_mean=raw_mean,
+        raw_median=raw_median,
+        raw_min=raw_min,
+        raw_max=raw_max,
+        norm_mean=norm_mean,
+        norm_median=norm_median,
+        norm_min=norm_min,
+        norm_max=norm_max,
+        win_fraction=win_fraction,
+        num_seeds=n,
+        win_count=win_count,
+    )
 
 
 def compute_judge_calibration_evidence(run_record):

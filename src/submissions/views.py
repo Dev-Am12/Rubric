@@ -1,12 +1,10 @@
 """
-Views for submissions (gallery, project detail, submission forms, my submissions).
-
-Design reference:
-  - UX.md §1 (screen inventory: /projects, /projects/{id}, /projects/new,
-               /projects/{id}/edit, /my/submissions)
-  - UX.md §4 (clean, minimal, professional)
-  - API.md §2 (thin presentation layer calling services.submissions.*)
-  - AUTHZ.md §3.1 (draft visibility, owner permissions)
+Views for submissions (gallery, project detail, submission forms, my submissions):
+  - /projects
+  - /projects/{id}
+  - /projects/new
+  - /projects/{id}/edit
+  - /my/submissions
 """
 
 import json
@@ -44,7 +42,6 @@ def _is_event_organizer(actor, event):
 def gallery_view(request):
     """
     Public gallery of SUBMITTED projects (/projects).
-    P-11 public project gallery (API.md §2, D-13).
     No auth required. Shows all submitted projects without pagination.
     """
     q = request.GET.get('q', '').strip() or None
@@ -126,7 +123,6 @@ def project_detail_view(request, id):
 def submit_view(request):
     """
     Create a new project submission (/projects/new).
-    P-11 submit route (API.md §2).
     Requires participant on their own team while submissions are open.
     Supports both JSON POST (API/checker) and HTMX/HTML form.
     """
@@ -165,7 +161,7 @@ def submit_view(request):
             elif user_teams:
                 team = user_teams[0]
             elif event:
-                # Solo participant: 1-person team per SCHEMA.md §1.1
+                # Solo participant: 1-person team
                 team = Team.objects.create(
                     event=event,
                     name=request.actor.user.display_name or 'Solo Team',

@@ -1,13 +1,6 @@
 """
 Service layer for events, tracks, and prizes.
 
-Design reference:
-  - SCHEMA.md §0.1 (all mutations through service layer)
-  - SCHEMA.md §1.1 (Event, Track, Prize models)
-  - SCHEMA.md §3 (app services boundary)
-  - API.md §2 (services.events.* endpoints)
-  - AUTHZ.md §1 (Actor/AnonymousActor policy checks via require())
-
 Views never touch the ORM directly for these entities — they call these
 service functions exclusively.
 """
@@ -543,5 +536,5 @@ def get_event(slug_or_actor, slug=None):
     return Event.objects.get(slug=target_slug)
 
 
-# Alias per API.md §2 table
+# Convenience alias
 get = get_event

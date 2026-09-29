@@ -1,14 +1,9 @@
 """
 Account views: register, login, logout.
-
-Design reference:
-- API.md §3 (accounts)
-- AUTHZ.md §1 (actor resolution)
-- UX.md §1 (screen inventory)
 """
 
 from django.conf import settings
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
@@ -38,8 +33,20 @@ def register_view(request):
     User registration view (/accounts/register).
     GET: renders registration form.
     POST: creates user, creates session token, sets session cookie.
+    Enforces rate limit (10 attempts / 5 minutes per IP).
     """
     if request.method == "POST":
+        allowed, err_msg = accounts_service.check_auth_rate_limit(request, action="register")
+        if not allowed:
+            if request.headers.get("Accept") == "application/json":
+                return JsonResponse({"error": err_msg}, status=429)
+            context = {
+                "error": err_msg,
+                "email": request.POST.get("email", ""),
+                "display_name": request.POST.get("display_name", ""),
+            }
+            return render(request, "accounts/register.html", context, status=429)
+
         email = request.POST.get("email", "")
         password = request.POST.get("password", "")
         display_name = request.POST.get("display_name", "")
@@ -79,8 +86,19 @@ def login_view(request):
     GET: renders login form.
     POST: validates credentials, sets session cookie.
     Failure must not reveal whether an email exists.
+    Enforces rate limit (10 attempts / 5 minutes per IP).
     """
     if request.method == "POST":
+        allowed, err_msg = accounts_service.check_auth_rate_limit(request, action="login")
+        if not allowed:
+            if request.headers.get("Accept") == "application/json":
+                return JsonResponse({"error": err_msg}, status=429)
+            context = {
+                "error": err_msg,
+                "email": request.POST.get("email", ""),
+            }
+            return render(request, "accounts/login.html", context, status=429)
+
         email = request.POST.get("email", "")
         password = request.POST.get("password", "")
 

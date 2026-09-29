@@ -44,7 +44,7 @@ class Project(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     external_id = models.CharField(max_length=64, null=True, blank=True, unique=True)
 
-    # Duplicate-submission handling (SCHEMA.md §1.1, NORMALIZATION.md D-02):
+    # Duplicate-submission handling:
     # The EARLIER submission (prj_07) flags itself against the LATER
     # canonical one (prj_41): prj_07.is_duplicate_of = prj_41.
     is_duplicate_of = models.ForeignKey(

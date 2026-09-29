@@ -361,7 +361,7 @@ class MySubmissionsViewTest(TestCase):
 
 class GeneralDuplicateDetectorTest(TestCase):
     """
-    Test 7: General duplicate-submission detector per NORMALIZATION.md D-02.
+    Test 7: General duplicate-submission detector.
     Tests dynamic detection during submit() without relying on the importer.
     """
 
@@ -396,7 +396,7 @@ class GeneralDuplicateDetectorTest(TestCase):
         """
         Two synthetic near-duplicate submissions from the same team submitted
         via submissions.services.submit() are automatically detected.
-        Earlier submission flags itself against later canonical one (D-02).
+        Earlier submission flags itself against later canonical one.
         """
         # Create earlier draft
         p1 = create_submission(

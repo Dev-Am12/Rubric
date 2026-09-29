@@ -5,11 +5,6 @@ This module is the single point of truth for "who is making this request and
 what are they allowed to do."  Every service function takes an Actor (or
 AnonymousActor) as its first argument; no view or API handler ever reaches
 for request.user directly for anything permission-related.
-
-Design references:
-  - AUTHZ.md §1 (actor resolution)
-  - SCHEMA.md §0, design principle 1 (service layer owns all mutations)
-  - PLAN.md P-03 (service layer with explicit actor-based authorization)
 """
 
 from django.utils import timezone
@@ -25,7 +20,7 @@ class PermissionDenied(Exception):
     """
     Raised by service-layer require() calls when an actor lacks permission.
 
-    The exception-handler mapping (AUTHZ.md §1):
+    The exception-handler mapping:
       AnonymousActor + PermissionDenied  →  HTTP 401
       resolved Actor + PermissionDenied  →  HTTP 403
     """
@@ -76,7 +71,7 @@ class Actor:
 
     Role booleans (.is_participant, .is_judge, .is_organizer) are computed
     independently from EventMembership rows — a single user CAN hold more
-    than one role in the same event (AUTHZ.md §1, stress-test F12).  There
+    than one role in the same event.  There
     is deliberately no singular .role attribute.
 
     .is_site_admin comes from User.is_site_admin, which is event-independent.
@@ -160,8 +155,8 @@ def require(actor, condition, status=403):
         Actor          → 403  (you authenticated, but you're not allowed)
 
     The `status` parameter is intentionally unused for now — it exists
-    as a future extension point (e.g., for a 404 "hide existence" case
-    per AUTHZ.md §6) but the current design always maps 401/403 from the
+    as a future extension point (e.g., for a 404 "hide existence" case)
+    but the current design always maps 401/403 from the
     actor type alone.  This is deliberate: the service layer should never
     need to know what HTTP status to return.
     """

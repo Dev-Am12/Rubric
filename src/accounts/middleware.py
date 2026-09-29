@@ -1,8 +1,6 @@
 """
 AuthMiddleware: resolves raw Authorization/Cookie headers into an Actor.
 
-Design reference: AUTHZ.md §1 (actor resolution flow).
-
 This middleware runs on every request and sets request.actor to either
 an Actor (authenticated, event-scoped) or AnonymousActor (no valid token).
 Views and service functions use request.actor exclusively for permission
@@ -140,7 +138,7 @@ class AuthMiddleware:
         """
         Map PermissionDenied to the correct HTTP status.
 
-        AUTHZ.md §1:
+        Status mapping:
           AnonymousActor → 401 (not authenticated)
           resolved Actor → 403 (authenticated but forbidden)
         """

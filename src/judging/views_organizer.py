@@ -3,12 +3,6 @@ Organizer views for Rubric:
 - /organizer (dashboard): Live progress, track under-coverage, graph health, flags.
 - /organizer/assignments: Trigger runs, run history, connectivity report.
 - /organizer/normalization: Trigger runs, Normalization Proof table with rank changes.
-
-Design reference:
-- UX.md §3 (the dashboard mockup — progress, under-coverage, graph health, flags, action buttons)
-- UX.md §4 (clean, simple, professional, quietly sophisticated)
-- API.md (organizer/assignments, organizer/normalization, export.csv routes)
-- AUTHZ.md §3.2 (organizer access control)
 """
 
 from collections import defaultdict
@@ -34,7 +28,7 @@ from submissions.models import Project, ProjectStatus
 @require_http_methods(['GET', 'POST'])
 def organizer_dashboard_view(request):
     """
-    Organizer dashboard (/organizer), per UX.md §3.
+    Organizer dashboard (/organizer):
     Live progress, track under-coverage, graph health, flags.
     """
     if not request.actor.is_organizer:
@@ -294,6 +288,7 @@ def organizer_normalization_view(request):
 
     calibration_evidence = norm_services.compute_judge_calibration_evidence(latest_run)
     synthetic_evidence = norm_services.synthetic_validation(seed=2026)
+    synthetic_sweep = norm_services.synthetic_validation_sweep(seeds=range(100))
 
     context = {
         'latest_run': latest_run,
@@ -304,6 +299,7 @@ def organizer_normalization_view(request):
         'excluded_scores': sum(1 for r in table_rows if r['normalized_rank'] is None),
         'calibration_evidence': calibration_evidence,
         'synthetic_evidence': synthetic_evidence,
+        'synthetic_sweep': synthetic_sweep,
     }
     return render(request, 'organizer/normalization.html', context)
 

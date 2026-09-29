@@ -1,13 +1,8 @@
 """
-Views for judge-facing UI and organizer progress.
-
-Design reference:
-  - UX.md §1 (screen inventory: /judge/queue, /judge/ballots/{id}, /organizer/progress)
-  - UX.md §2 (the ballot screen: two-pane layout, fixed submission material,
-              independently scrolling rubric, autosave via HTMX, keyboard shortcuts,
-              strictly zero leak of peer scores)
-  - UX.md §4 (clean, minimal, professional, quietly sophisticated)
-  - AUTHZ.md §3.2 (judging isolation, organizer progress)
+Views for judge-facing UI and organizer progress:
+  - /judge/queue
+  - /judge/ballots/{id} (two-pane layout, autosave via HTMX, zero leak of peer scores)
+  - /organizer/progress
 """
 
 import json
@@ -20,7 +15,7 @@ from accounts.actors import PermissionDenied
 from judging.models import AssignmentStatus, BallotScore
 from services import judging as judging_services
 
-# Behavioral anchor descriptions per NORMALIZATION.md and UX.md §2
+# Behavioral anchor descriptions
 CRITERION_ANCHORS = {
     'functionality': {
         1: 'Does not function / crashes immediately',

@@ -446,6 +446,37 @@ un.py T1/T2 check. Temporary database and server log files were removed afterwar
 - Verification: focused regressions `Ran 8 tests in 1.316s`, `OK`; full SQLite `Ran 260 tests in 93.485s`, `OK (skipped=1)`; full PostgreSQL `Ran 260 tests in 129.896s`, `OK`.
 - `makemigrations --check --dry-run`: no changes; Django system check: no issues. Live `run.py .dogfood.toml` against `runserver 8080` reported all T1/T2 checks PASS, with `claimed nothing, verified T1 T2`.
 
+## 2026-09-29 — Phase 3, Step 3.3: Submission hardening sweep
+
+- Leaky route removal:
+  - Removed `/debug/_leaky_test_only/...`, deleted `accounts/views_debug.py`, removed URLconf route from `rubric/urls.py`, and removed its entry in `tests/authz_expectations.yaml`.
+  - Preserved route-coverage alarm proof: added synthetic URLconf `tests/urls_synthetic_undeclared.py` and regression test in `tests/test_auth_policy.py` (`test_coverage_alarm_fails_on_undeclared_route`) using `override_settings(ROOT_URLCONF=...)` asserting that undeclared routes trigger alarm failure.
+  - Documented in `DECISIONS.md` under entry #24.
+- Demo-login switch:
+  - Supported `RUBRIC_SEED_DEMO_LOGINS` environment variable in `seed_fixtures` management command (defaulting to True).
+  - When false, fixture data (event, tracks, judges, teams, projects, scores) is still imported, but public demo persona tokens and organizer account creation are skipped, and instructions on running `create_organizer` are printed instead.
+  - Added unit test in `tests/test_p3_step3_3.py` exercising both `True` and `False` branches.
+  - Documented in `DECISIONS.md` under entry #25.
+- Authentication rate limiting:
+  - Added `AuthAttempt` model (`accounts/models.py`, migration `accounts.0004_authattempt`) storing action, HMAC-SHA256 keyed hash of client IP (`max_length=64`), and timestamp.
+  - Added DB-backed sliding window rate limiter `check_auth_rate_limit(request, action)` in `accounts/services.py` (and re-exported via `services.accounts`). Enforces limit of 10 attempts per 5 minutes per IP across multi-process workers. Returns HTTP 429 Too Many Requests with clear message `"Too many authentication attempts. Please try again in 5 minutes."`.
+  - Wired into `login_view` and `register_view` in `accounts/views.py`.
+  - Updated expectations in `tests/authz_expectations.yaml`. Added comprehensive tests in `tests/test_p3_step3_3.py` for sliding window enforcement, independent IP tracking, window expiry, and HMAC hashing.
+- Dangling-reference sweep:
+  - Purged planning documentation references (`UX.md`, `NORMALIZATION.md`, `AUTHZ.md`, `SCHEMA.md`, `VOTING.md`, `API.md`, `PLAN.md`, `LOGS.md`, `DL-0xx`, `planning/`) from all code comments, templates, tests, YAML, scripts, CI, and `DECISIONS.md`.
+  - Cleaned user-visible text in `organizer/dashboard.html` and `organizer/rubric.html`.
+  - Confirmed policy codes (`D-01`..`D-05`, `A-01`..`A-07`, `V-01`..`V-07`) stay ONLY where `JUDGING.md` defines them.
+  - Added `tests/test_no_dangling_refs.py` scanning `src`, `tests`, `scripts`, `.github`, root files, and `DECISIONS.md` with `JUDGING.md` on documented `PENDING_REWRITE` allow-list.
+- Synthetic normalization sweep:
+  - Implemented `services.normalization.synthetic_validation_sweep(seeds=range(100))` computing mean, median, min, max for raw and normalized Spearman correlations, and win fraction across 100 seeds.
+  - Measured values: Raw Spearman mean=0.7347, median=0.7451, min=0.3158, max=0.9023; Normalized Spearman mean=0.8949, median=0.9060, min=0.7293, max=0.9759; Win fraction=1.0 (100/100 seeds).
+  - Exposed sweep on `/organizer/normalization` beside single-seed result, clearly labeled SYNTHETIC.
+- Full test suite verification & acceptance run:
+  - SQLite test suite: Ran 270 tests in 61.398s, OK (skipped=1).
+  - PostgreSQL test suite: Ran 270 tests in 137.859s, OK.
+  - Acceptance runner (`python run.py .dogfood.toml` against live server on port 8080): all checks PASS (T1 gallery public, fixture projects shown, closed submissions refused; T2 judge sees own scores, peer scores denied, participant blocked, CSV export works).
+
+
 
 
 
