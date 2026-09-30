@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![Django](https://img.shields.io/badge/django-5.2-green.svg)](https://www.djangoproject.com/)
 [![PostgreSQL](https://img.shields.io/badge/postgresql-16-blue.svg)](https://www.postgresql.org/)
-[![CI](https://img.shields.io/badge/CI-passing-brightgreen.svg)](.github/workflows/ci.yml)
+[![CI](https://github.com/Dev-Am12/Rubric/actions/workflows/ci.yml/badge.svg)](https://github.com/Dev-Am12/Rubric/actions/workflows/ci.yml)
 
 ---
 
@@ -19,6 +19,42 @@
 - **Repository:** [https://github.com/Dev-Am12/Rubric](https://github.com/Dev-Am12/Rubric)
 - **Demo Video:** [▶ Demo Video](https://drive.google.com/drive/folders/1sVArFhpSnswrgRyhIGcacO7rwGqx6_lW?usp=sharing)
 - **Slide Deck:** [📊 Slide Deck](https://gamma.app/docs/Rubric-scannk20nm92o5e)
+
+---
+
+### Submission Snapshot: Which Commit Is the Project?
+
+> [!IMPORTANT]
+> **The evaluated build is commit [`777bbb5`](https://github.com/Dev-Am12/Rubric/commit/777bbb5)** ([browse that tree](https://github.com/Dev-Am12/Rubric/tree/777bbb5)), the last commit before the September 29, 2026 18:00 UTC code freeze. All four CI checks passed on it (`clean-room`, `test-postgres`, `static-scan`, `offline-check`).
+>
+> **Every later commit is documentation-only.** The post-freeze update corrects inconsistencies in this README and re-saves `acceptance-report.txt` as UTF-8 (its content is unchanged; it had been written as UTF-16 by a PowerShell redirect). No application code, test, CI workflow, container file, dependency list, fixture, checker or `.dogfood.toml` changed.
+
+To verify that yourself:
+
+```bash
+git clone https://github.com/Dev-Am12/Rubric.git && cd Rubric
+
+# Code, tests, CI, container and checker configuration versus the evaluated commit.
+# No output means they are byte-identical.
+git diff 777bbb5 HEAD --stat -- src tests scripts .github Dockerfile docker-compose.yml \
+    entrypoint.sh requirements.txt fixtures.json run.py .dogfood.toml
+
+# Everything that changed since then: only README.md and acceptance-report.txt.
+git diff 777bbb5 HEAD --stat
+```
+
+What the post-freeze README update corrected:
+
+| Was | Now |
+|---|---|
+| A browser login (`organizer123`) that no seeded account actually has | The working path: `create_organizer`, then sign in at `/login` |
+| Section 11 said `claimed nothing`; the toml and report say `claimed T1 T2` | `claimed T1 T2, verified T1 T2` everywhere |
+| 270 tests, with PostgreSQL timings from an earlier run | 271 tests; PostgreSQL is covered by the `test-postgres` CI job on `777bbb5` |
+| Test references to `tests/test_g6_step*.py`, which matches no file | The real files: `test_g6_voting.py`, `test_p3_step3_2b.py` |
+| A table of contents that ended at 17 and skipped Demo | All 18 sections |
+| Sequence diagram with a wrong judge id and 403 message; paraphrased trigger SQL; made-up hash values | Judge B is `jdg_29`; the real 403 body; the trigger SQL from the migration |
+| "Four" bridging judges | Nine judges are eligible for two tracks (from `fixtures.json`) |
+| "JSON action parity" | The actual JSON and CSV endpoints, listed |
 
 ---
 
@@ -46,7 +82,8 @@
 14. [Running Your Own Event](#14-running-your-own-event)
 15. [Honest Limitations](#15-honest-limitations)
 16. [Documentation Map](#16-documentation-map)
-17. [License](#17-license)
+17. [Demo](#17-demo)
+18. [Team & License](#18-team--license)
 
 ---
 
@@ -78,7 +115,13 @@ seeded. test logins:
   participant: Authorization: Bearer rubric_seed_participant_tok_3f4e5d6c7b8a
 ```
 
-*Web Browser Login:* An organizer account is seeded at `superorganizer@example.com` or `organizer@rubric.local` with password `organizer123`.
+*Web browser login:* the seeded personas above authenticate by bearer token only (for `curl` and the checker). No seeded account has a password. To use the web UI as an organizer, create one (the seed step prints the same hint):
+
+```bash
+docker compose exec web sh -c 'cd /app/src && python manage.py create_organizer --email you@example.org --password "<choose-a-password>" --name "Your Name"'
+```
+
+Then sign in at `http://localhost:8080/login` and open `/organizer`. Judges join through invitation links created at `/organizer/judges`; participants register at `/accounts/register`. Note that the fixture event's submission deadline is in the past, so new submissions are refused until an organizer moves the close date on the event dates page.
 
 ### Running the Official Acceptance Checker
 
@@ -116,12 +159,13 @@ python -m venv .venv
 source .venv/bin/activate  # Or .venv\Scripts\activate on Windows
 pip install -r requirements.txt
 
-# 2. Point to local PostgreSQL and run tests
-export DATABASE_URL="postgresql://rubric:rubric_dev_only@localhost:5432/rubric_dev"
-export PYTHONPATH="src;."
+# 2. Run the test suite. With no DATABASE_URL it uses in-memory SQLite;
+#    with DATABASE_URL set it runs against that database (PostgreSQL in CI).
+export PYTHONPATH="src:."        # PowerShell: $env:PYTHONPATH = "src;."
 python src/manage.py test tests --settings=rubric.settings_test
 
-# 3. Start local development server
+# 3. Start the development server against local PostgreSQL
+export DATABASE_URL="postgresql://rubric:rubric_dev_only@localhost:5432/rubric_dev"
 python src/manage.py migrate
 python src/manage.py seed_fixtures
 python src/manage.py runserver 8080
@@ -164,11 +208,11 @@ flowchart TD
 | Tier | Area | Implementation Status | Evidence / Verification Method |
 |---|---|---|---|
 | **T1** | **Core Portal** | **Fully Implemented** | Machine-verified by `run.py` (`gallery is public`, `project from fixtures shown`, `closed event refuses submissions`). |
-| **T1** | **Events & Teams** | **Fully Implemented** | Multi-event management, current-event isolation, team invite codes, and membership rosters verified by `tests/test_g5_step7.py` and `tests/test_g5_step8.py`. |
+| **T1** | **Events & Teams** | **Fully Implemented** | Multi-event management, the single-current-event constraint, event, track and prize configuration, judge invitations and team invite links, verified by `tests/test_g5_step7.py` and `tests/test_g5_step8.py`. |
 | **T2** | **Judging Engine** | **Fully Implemented** | Machine-verified by `run.py` (`judge sees own scores`, `judge cannot see peer scores`, `participant blocked`, `csv export works`). |
 | **T2** | **Normalization** | **Fully Implemented** | Empirical-Bayes shrinkage, constant-judge handling, graph Laplacian connectivity analysis, and 100-seed synthetic sweep verified by `tests/test_docs_consistency.py`. |
-| **T3** | **Public Voting** | **Substantially Implemented** | OPEN and AUTH access modes, voter budgets, withdrawal, per-voter deterministic shuffle, live result gating, and comment moderation verified by `tests/test_g6_step*.py` (human-verifiable in under 60s). |
-| **T4** | **Stretch Features** | **Incomplete / Not Claimed** | We ship JSON action parity and CSV exports, but **no** webhooks, certificates, embeddable widgets, or published OpenAPI schemas. |
+| **T3** | **Public Voting** | **Substantially Implemented** | OPEN and AUTH access modes, voter budgets, withdrawal, per-voter deterministic shuffle, live result gating, and comment moderation verified by `tests/test_g6_voting.py` and `tests/test_p3_step3_2b.py`. |
+| **T4** | **Stretch Features** | **Incomplete / Not Claimed** | We ship a small JSON and CSV surface (judge scores, ballot submission, organizer progress, audit log and chain verification, voting summary, comment flagging, CSV export), but **no** webhooks, certificates, embeddable widgets, or published OpenAPI schemas. |
 
 > [!IMPORTANT]
 > The official acceptance checker (`run.py`) machine-verifies **T1 and T2 only**. Passing `run.py` does not prove T3 or T4.
@@ -253,18 +297,18 @@ To evaluate hackathons with specialized tracks, judges are assigned using a dete
 1. **Hard Track Eligibility:** Judges are only assigned to projects in tracks they are declared eligible for (`JudgeTrackEligibility`).
 2. **Conflict of Interest:** Team members are strictly prohibited from evaluating their own projects.
 3. **Load Balancing:** At each assignment step, the least-loaded eligible judge is prioritized.
-4. **Graph Health Analysis:** Cross-judge normalization relies on judge overlap. Rubric builds the judge adjacency graph, computes the graph Laplacian $L = D - A$, and derives the algebraic connectivity (Fiedler value $\lambda_2$). In the fixture data, all 30 judges form a single connected component with global Fiedler value $\lambda_2 \approx 0.0875$, bridged by four multi-track judges (`jdg_02`, `jdg_03`, `jdg_11`, `jdg_29`).
+4. **Graph Health Analysis:** Cross-judge normalization relies on judge overlap. Rubric builds the judge adjacency graph, computes the graph Laplacian $L = D - A$, and derives the algebraic connectivity (Fiedler value $\lambda_2$). In the fixture data, all 30 judges form a single connected component with global Fiedler value $\lambda_2 \approx 0.0875$, connected through nine judges who are each eligible for two tracks (`jdg_02`, `jdg_03`, `jdg_11`, `jdg_12`, `jdg_20`, `jdg_23`, `jdg_24`, `jdg_26`, `jdg_29`).
 
 ### Cross-Judge Normalization (Empirical-Bayes)
 Judges exhibit systematic bias: some score harsh, some lenient, and some never differentiate. Rubric applies an **empirical-Bayes shrinkage estimator**:
 
 For judge $j$ with $n_j$ completed ballots, raw mean $\bar{y}_j$, raw variance $s_j^2$, and event-wide pooled mean $\mu_0$ and variance $\sigma_0^2$:
 
-$$\mu_j = \frac{n_j \bar{y}_j + 4 \mu_0}{n_j + 4}$$
+$$\tilde{\mu}_j = \frac{n_j \bar{y}_j + 4 \mu_0}{n_j + 4}$$
 
-$$s_j^2 = \frac{n_j s_j^2 + 4 \sigma_0^2}{n_j + 4}$$
+$$\tilde{s}_j^2 = \frac{n_j s_j^2 + 4 \sigma_0^2}{n_j + 4}$$
 
-$$z_{i,j} = \frac{y_{i,j} - \mu_j}{\sqrt{s_j^2}}$$
+$$z_{i,j} = \frac{y_{i,j} - \tilde{\mu}_j}{\sqrt{\tilde{s}_j^2}}$$
 
 A project's final score is the mean of its judges' standardized ratings mapped back to the 1–5 scale:
 
@@ -319,17 +363,17 @@ sequenceDiagram
     alt Actor is Organizer
         S->>DB: Fetch requested judge's scores
         S-->>C: 200 OK + Scores JSON
-    else Actor is Judge (jdg_08) requesting jdg_07
-        S->>S: Assert actor.user matches target judge
-        S-->>C: 403 Forbidden ("Judges may only access their own scores.")
+    else Actor is judge_b (jdg_29) requesting jdg_07
+        S->>S: Requested id differs from the caller's own judge id
+        S-->>C: 403 Forbidden
     else Actor is Participant or Anonymous
         S-->>C: 401 Unauthorized / 403 Forbidden
     end
 ```
 
 ### Defense-in-Depth Mechanisms:
-1. **Single Backend Chokepoint:** Both `/api/judge/scores` and `/api/judge/scores?judge=<id>` are routed through `services.judging.get_scores()`. Authorization is enforced on the database record (`JudgeAssignment.judge == actor.user`), never relying on URL parameters or client-side filtering.
-2. **Route Authorization Policy Matrix:** Every single route in Rubric is declared in `tests/authz_expectations.yaml` across six distinct personas (anonymous, participant, judge A, judge B, unassigned judge, organizer).
+1. **Single Backend Chokepoint:** Both `/api/judge/scores` and `/api/judge/scores?judge=<id>` are routed through `services.judging.get_scores()`. A judge's ballots are selected by the authenticated user on the database record (`assignment.judge == actor.user`), never by trusting a URL parameter or client-side filtering.
+2. **Route Authorization Policy Matrix:** Every single route in Rubric is declared in `tests/authz_expectations.yaml` with the access level it requires (public, participant, judge, organizer, and so on) and the response each caller must receive.
 3. **Route Coverage Alarm:** `tests/test_auth_policy.py` inspects the live Django URL resolver and asserts that **zero** undeclared routes exist. A regression test (`test_coverage_alarm_fails_on_undeclared_route`) exercises a synthetic URLconf with an undeclared route to prove that the alarm fails if any un-quarantined endpoint is introduced.
 4. **Target-Event Scoping:** An adversarial review identified that mutations could leak across events if checked against `current_event()`. Every mutation now explicitly verifies membership in the **target event being edited**.
 
@@ -341,8 +385,8 @@ Rubric records all sensitive state transitions (ballot submissions, rubric chang
 
 ```mermaid
 flowchart LR
-    E1["Entry 1 (Genesis)<br/>prev_hash: 000...000<br/>hash: e3b0c44..."] --> E2["Entry 2<br/>prev_hash: e3b0c44...<br/>hash: 8f4b2a1..."]
-    E2 --> E3["Entry 3<br/>prev_hash: 8f4b2a1...<br/>hash: 2c7d9e0..."]
+    E1["Entry 1<br/>prev_hash: 64 zeros (genesis)<br/>hash: SHA-256 of entry 1"] --> E2["Entry 2<br/>prev_hash: hash of entry 1<br/>hash: SHA-256 of entry 2"]
+    E2 --> E3["Entry 3<br/>prev_hash: hash of entry 2<br/>hash: SHA-256 of entry 3"]
 ```
 
 ### Audit Properties:
@@ -350,16 +394,22 @@ flowchart LR
 - **Concurrency Locking:** Sequence allocation is serialized under a PostgreSQL row lock and advisory lock (`SELECT FOR UPDATE`), preventing chain forks.
 - **Database-Level Immutability:** On PostgreSQL, database triggers strictly abort any `UPDATE`, `DELETE`, or `TRUNCATE` operations on the `audit_auditlogentry` table:
   ```sql
-  CREATE OR REPLACE FUNCTION audit_immutable_trigger() RETURNS trigger AS $$
+  CREATE FUNCTION audit_reject_immutable_mutation() RETURNS trigger AS $$
   BEGIN
-      RAISE EXCEPTION 'AuditLogEntry rows are immutable and cannot be updated or deleted';
+      RAISE EXCEPTION 'audit log entries are immutable';
   END;
   $$ LANGUAGE plpgsql;
+  CREATE TRIGGER audit_log_entry_no_row_mutation
+  BEFORE UPDATE OR DELETE ON audit_auditlogentry
+  FOR EACH ROW EXECUTE FUNCTION audit_reject_immutable_mutation();
+  CREATE TRIGGER audit_log_entry_no_truncate
+  BEFORE TRUNCATE ON audit_auditlogentry
+  FOR EACH STATEMENT EXECUTE FUNCTION audit_reject_immutable_mutation();
   ```
 - **Offline Independent Verification:** An organizer can download the full ledger (`/api/v1/organizer/audit-log/verify?download=1`) and verify the chain using a standalone standard-library script:
   ```bash
   python scripts/verify_audit_chain.py audit_export.json
-  # audit chain valid; head_hash=8f4b2a1...
+  # audit chain valid; head_hash=<64-hex digest>
   ```
 
 > [!WARNING]
@@ -381,7 +431,7 @@ Public voting enables community voting alongside official judging. Voting is con
 ### What It Stops
 - **Double Voting:** Database unique constraint on `(event, project, mode, voter_pseudonym)`.
 - **Budget Exploits:** Database transactions are serialized per event (`SELECT FOR UPDATE`), preventing parallel race conditions.
-- **Early Tally Leakage:** Result views and API endpoints reject non-organizers with HTTP 200 (hidden template) or HTTP 403 before closing.
+- **Early Tally Leakage:** Before the window closes, non-organizers get a "results are hidden" notice from the HTML results page (HTTP 200) and a 401 or 403 from the JSON endpoints.
 - **Ineligible Project Voting:** Drafts, superseded duplicates (`prj_07`), and cross-event projects cannot receive votes or comments.
 - **Comment Abuse:** Comments require registration, are rate-limited, and feature organizer flag-and-hide moderation.
 - **Brute Force & Account Spam:** Authentication (login/register) is rate-limited via a database-backed sliding window (10 attempts / 5 minutes per HMAC-hashed IP).
@@ -433,14 +483,15 @@ Rubric enforces rigorous automated and offline verification:
 Tests run against both SQLite (fast development) and local PostgreSQL (concurrency & trigger parity):
 
 ```bash
-# Full test suite against PostgreSQL
+# Full test suite (in-memory SQLite by default; set DATABASE_URL to use PostgreSQL)
+# PYTHONPATH must include src and the repository root, as in Quick Start
 python src/manage.py test tests --settings=rubric.settings_test
 ```
 
 #### Actual Observed Test Results:
-- **SQLite Test Suite:** Ran **270 tests** in 61.4s, **269 passed, 1 skipped** (PostgreSQL-specific trigger flush), **0 failures, 0 errors**.
-- **PostgreSQL Test Suite:** Ran **270 tests** in 137.9s, **270 passed, 0 skipped, 0 failures, 0 errors**.
-- **Official Acceptance Checker:** **7/7 PASS** (`claimed nothing, verified T1 T2`).
+- **SQLite (in-memory):** **271 tests** run on the final code, **270 passed, 1 skipped** (the PostgreSQL-only trigger-immutability test), **0 failures, 0 errors**.
+- **PostgreSQL:** the same suite runs in the `test-postgres` CI job, which passed on the evaluated commit `777bbb5`; there the trigger-immutability test is not skipped.
+- **Official Acceptance Checker:** **7/7 PASS** (`claimed T1 T2, verified T1 T2`), committed as `acceptance-report.txt`.
 
 ### Automated vs. Human Verification
 
@@ -451,9 +502,9 @@ python src/manage.py test tests --settings=rubric.settings_test
 | **T2: CSV Export** | `run.py` & Django Tests | Header & MIME type validation |
 | **T2: Normalization mathematics** | `tests/test_docs_consistency.py` | Exact float & string matching |
 | **Route Authorization Matrix** | `tests/test_auth_policy.py` | Full URLconf traversal vs. YAML |
-| **No Dangling Planning References** | `tests/test_no_dangling_refs.py` | Static code & markdown scanner |
+| **No Dangling Internal References** | `tests/test_no_dangling_refs.py` | Static code & markdown scanner |
 | **Complete Offline Network Isolation** | CI `offline-check` job | Container egress blocked by iptables |
-| **T3: Public Voting & Ballot Shuffling** | `tests/test_g6_step*.py` + Human Review | Concurrency test & manual walkthrough |
+| **T3: Public Voting & Ballot Shuffling** | `tests/test_g6_voting.py`, `tests/test_p3_step3_2b.py` + Human Review | Concurrency test & manual walkthrough |
 
 ---
 
@@ -483,7 +534,7 @@ claimed = ["T1", "T2"]
 pitch = "Rubric delivers an auditable hackathon evaluation portal featuring cryptographic append-only audit logging, empirical-Bayes shrinkage normalization, and provable judge score isolation."
 ```
 
-*Sequential Gating:* The checker evaluates sequentially ($T1 \rightarrow T2$). A failure in any T1 assertion immediately prevents credit for T2.
+*Tier gating:* a tier counts as verified only if every tier below it also passed, so a T1 failure would leave T2 unverified even if its own checks passed.
 
 ---
 
@@ -506,7 +557,7 @@ Rubric/
 ├── scripts/
 │   ├── check_no_external_assets.py# Static scanner asserting zero external CDNs/fonts
 │   └── verify_audit_chain.py      # Standalone standard-library audit verifier
-├── tests/                         # Full test suite (270 unit, integration, and policy tests)
+├── tests/                         # Full test suite (271 unit, integration, and policy tests)
 └── src/                           # Django project root
     ├── accounts/                  # Auth, tokens, rate limiting, and actors
     ├── events/                    # Event lifecycle, tracks, prizes, and current event
@@ -529,7 +580,11 @@ To run an event using Rubric:
 
 1. **Bootstrap Site Administrator:**
    ```bash
-   python src/manage.py create_organizer --email admin@example.com --password "SecurePass123" --name "Lead Organizer"
+   # Docker Compose deployment
+   docker compose exec web sh -c 'cd /app/src && python manage.py create_organizer --email admin@example.com --password "<choose-a-password>" --name "Lead Organizer"'
+
+   # Native deployment
+   python src/manage.py create_organizer --email admin@example.com --password "<choose-a-password>" --name "Lead Organizer"
    ```
 2. **Create and Activate Event:**
    - Log in at `/login` and navigate to `/organizer/events`.
@@ -566,6 +621,7 @@ To run an event using Rubric:
 - **Audit Trust Boundary:** Immutability is enforced against application users and PostgreSQL write queries via triggers. A database superuser can modify underlying storage.
 - **Production Demo Flag:** Development builds print demo tokens. Production deployments must set `RUBRIC_SEED_DEMO_LOGINS=false`.
 - **Database Concurrency:** SQLite in-memory locks do not provide cross-process serialization. PostgreSQL is mandatory for production deployments.
+- **Cosmetic:** the organizer dashboard's voting-integrity card prints outcome names without separators (for example `Rejectedratelimit`). The counts shown are correct.
 
 ---
 
